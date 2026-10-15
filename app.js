@@ -31,7 +31,8 @@ const CFG=window.TIMESHEET_CONFIG||{};
 const sb=(CFG.supabaseUrl&&CFG.supabaseAnonKey&&window.supabase)?window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey):null;
 
 /* ---------- data ---------- */
-const fromRow=r=>({id:r.id,uid:r.user_id,date:r.date,task:r.task||'',notes:r.notes||'',project:r.project||'',location:normLoc(r.location),start:r.start_time||'',end:r.end_time||'',hours:+r.hours||0,created:Date.parse(r.created_at)||0});
+const exactH=(s,e)=>{if(!s||!e) return null;let m=toMin(e)-toMin(s);if(m<=0) m+=1440;return m/60;};
+const fromRow=r=>({id:r.id,uid:r.user_id,date:r.date,task:r.task||'',notes:r.notes||'',project:r.project||'',location:normLoc(r.location),start:r.start_time||'',end:r.end_time||'',hours:(r.start_time&&r.end_time&&!isLeave(normLoc(r.location)))?exactH(r.start_time,r.end_time):(+r.hours||0),created:Date.parse(r.created_at)||0});
 const toRow=e=>({date:e.date,task:e.task,notes:e.notes||null,project:e.project||null,location:e.location,start_time:e.start||null,end_time:e.end||null,hours:+e.hours||0});
 function allEntries(){return [...state.rows.values()];}
 function visible(){const a=allEntries();if(state.person==='all') return a;const w=state.person==='me'?state.uid:state.person;return a.filter(e=>e.uid===w);}
@@ -151,7 +152,7 @@ $('#timer').addEventListener('submit',async ev=>{
         const s=$('#t-start').value,e=$('#t-end').value,h=spanH(s,e);
         if(!h){showBanner('Add a start and end time to log this entry.');return;}
         if(!task){showBanner('Add a task name first, for example "Bank visit".');$('#t-task').focus();return;}
-        await addEntry({id:newId(),date,task,project,location,notes,start:s,end:e,hours:h,created:Date.now()});
+        await addEntry({id:newId(),date,task,project,location,notes,start:s,end:e,hours:exactH(s,e),created:Date.now()});
       }
       $('#banner').hidden=true;state.anchor=parse(date);clearBar();
     }else{
@@ -168,8 +169,16 @@ function syncManual(){
   const lv=isLeave($('#t-loc').value);['#t-start','#t-end'].forEach(s=>$(s).disabled=lv);
   if(!$('#t-date').value) $('#t-date').value=iso(new Date());
   const h=spanH($('#t-start').value,$('#t-end').value);$('#t-dur').textContent=lv?'Off':h?dur(h):'0:00';
+  $('#t-mins').disabled=lv;if(document.activeElement!==$('#t-mins')) $('#t-mins').value=lv||!h?'':Math.round(exactH($('#t-start').value,$('#t-end').value)*60);
   paintTimer();
 }
+$('#t-mins').addEventListener('input',()=>{
+  const m=parseInt($('#t-mins').value,10);if(!(m>0)) return;const s=$('#t-start').value;
+  const fmt=x=>{x=((x%1440)+1440)%1440;return pad(Math.floor(x/60))+':'+pad(x%60);};
+  if(s){$('#t-end').value=fmt(toMin(s)+m);}
+  else{const n=new Date(),e=n.getHours()*60+n.getMinutes();$('#t-end').value=fmt(e);$('#t-start').value=fmt(e-m);}
+  syncManual();
+});
 $('#m-timer').onclick=()=>{state.manual=false;store.set('tt.manual','0');syncManual();};
 $('#m-manual').onclick=()=>{state.manual=true;store.set('tt.manual','1');syncManual();};
 ['#t-start','#t-end','#t-loc'].forEach(s=>$(s).addEventListener('change',syncManual));

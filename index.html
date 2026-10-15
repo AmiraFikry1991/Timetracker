@@ -73,6 +73,8 @@ textarea{resize:vertical;min-height:70px;width:100%}
 .modes svg{width:16px;height:16px}
 .manual{display:flex;align-items:center;gap:4px}
 .manual .dash{color:var(--muted)}
+.mins{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:.85rem;font-weight:600}
+.mins input{width:64px;text-align:right;border:1px solid var(--line)!important;border-radius:8px;background:var(--hover)!important;padding:4px 6px!important}
 .timer .notesrow{flex-basis:100%;border-top:1px dashed var(--line);display:flex}
 .timer .notesrow input{flex:1;border:0;background:transparent;padding:10px 16px;font-size:.88rem;color:var(--muted)}
 
@@ -342,11 +344,12 @@ td.r{text-align:right;font-family:var(--f-mono)}
         <span class="clock" id="clock">00:00:00</span>
       </div>
       <div class="seg manual" id="seg-manual" hidden>
-        <input type="time" id="t-start" step="900" aria-label="Start time">
+        <input type="time" id="t-start" step="60" aria-label="Start time">
         <span class="dash">to</span>
-        <input type="time" id="t-end" step="900" aria-label="End time">
+        <input type="time" id="t-end" step="60" aria-label="End time">
         <input type="date" id="t-date" aria-label="Date">
-        <span class="mono" id="t-dur" style="min-width:3.5em;text-align:right">0:00</span>
+        <label class="mins"><input type="number" id="t-mins" min="1" max="1440" step="1" inputmode="numeric" placeholder="0" aria-label="Duration in minutes"><span>min</span></label>
+        <span class="mono" id="t-dur" hidden>0:00</span>
       </div>
       <button class="go" id="go" type="submit">Start</button>
       <div class="modes" role="group" aria-label="Entry mode">
@@ -427,8 +430,8 @@ td.r{text-align:right;font-family:var(--f-mono)}
       </select></label>
       <label>Date<input type="date" id="e-date" required></label>
       <label>Hours<input type="number" id="e-hours" min="0.01" max="24" step="0.01"></label>
-      <label>From<input type="time" id="e-start" step="900"></label>
-      <label>To<input type="time" id="e-end" step="900"></label>
+      <label>From<input type="time" id="e-start" step="60"></label>
+      <label>To<input type="time" id="e-end" step="60"></label>
     </div>
     <div class="foot">
       <div class="confirm"><button class="btn danger" id="e-del" type="button">Delete</button>
