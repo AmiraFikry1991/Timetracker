@@ -308,14 +308,24 @@ function dueLabel(d){if(!d) return '';const t=iso(new Date());const cls=d<t?'lat
   const lab=d===t?'Due today':d<t?'Overdue, '+dayLabel(d).replace('Yesterday','yesterday'):'Due '+dayLabel(d);return `<span class="due ${cls}">${esc(lab)}</span>`;}
 function renderTodo(){
   if(state.todoError){$('#todo-list').innerHTML='<p class="hint">The To Do list needs a one-time database update. Run supabase/todos.sql in the Supabase SQL editor, then refresh.</p>';$('#tada-list').innerHTML='';return;}
-  const open=state.todos.filter(t=>!t.done).sort((a,b)=>(a.due_date||'9999')<(b.due_date||'9999')?-1:(a.due_date||'9999')>(b.due_date||'9999')?1:a.created_at<b.created_at?-1:1);
-  const done=state.todos.filter(t=>t.done).sort((a,b)=>a.done_at<b.done_at?1:-1);
+  const p=state.person,all=p==='all',who=p==='me'?state.uid:p,self=who===state.uid&&!all;
+  const pool=all?state.todos:state.todos.filter(t=>t.user_id===who);
+  const nm=all?'Everyone':self?'':(state.names[who]||'Teammate');
+  $('#todo-form').hidden=!self;$('#td-ro').hidden=self;
+  $('#td-ro').textContent=all?"You're viewing everyone's lists. Only each person can tick off or change their own items.":`You're viewing ${nm}'s lists. Only ${nm} can tick off or change these items.`;
+  $('#td-head').textContent=self?'To Do':all?"Everyone's To Do":nm+"'s To Do";
+  $('#tada-head').textContent=self?'Ta-da!':all?"Everyone's Ta-da!":nm+"'s Ta-da!";
+  $('#tada-hint').textContent=self?"Everything you've finished in the last 60 days. Tap one to move it back.":'Finished in the last 60 days.';
+  const whoChip=t=>all?`<span class="td-who">${esc(t.user_id===state.uid?'You':(state.names[t.user_id]||'Teammate'))}</span>`:'';
+  const open=pool.filter(t=>!t.done).sort((a,b)=>(a.due_date||'9999')<(b.due_date||'9999')?-1:(a.due_date||'9999')>(b.due_date||'9999')?1:a.created_at<b.created_at?-1:1);
+  const done=pool.filter(t=>t.done).sort((a,b)=>a.done_at<b.done_at?1:-1);
   $('#td-count').textContent=open.length||'';$('#tada-count').textContent=done.length||'';
-  $('#todo-list').innerHTML=open.length?open.map(t=>`<div class="td-item"><button class="tick" type="button" data-tddone="${esc(t.id)}" aria-label="Mark as done">${ICON_CK}</button>
-    <div class="td-txt"><b>${esc(t.title)}</b>${dueLabel(t.due_date)}</div>
-    <span class="td-acts"><button type="button" data-tdtime="${esc(t.id)}" title="Start the timer for this" aria-label="Start the timer for this">${ICON_PLAY}</button><button type="button" data-tddel="${esc(t.id)}" title="Delete" aria-label="Delete">${ICON_X}</button></span></div>`).join(''):'<p class="hint" style="padding:6px 0">Nothing on your list. Add something above.</p>';
-  let last='';$('#tada-list').innerHTML=done.length?done.map(t=>{const d=iso(new Date(t.done_at));const head=d!==last?`<div class="tada-day">${esc(dayLabel(d))}</div>`:'';last=d;
-    return head+`<button type="button" class="tada-item" data-tdundo="${esc(t.id)}" title="Move back to To Do"><span class="ck">${ICON_CK}</span><span class="t">${esc(t.title)}</span></button>`;}).join(''):'<p class="hint" style="padding:6px 0">Tick something off and it lands here.</p>';
+  $('#todo-list').innerHTML=open.length?open.map(t=>{const mine=t.user_id===state.uid;
+    return `<div class="td-item">${mine?`<button class="tick" type="button" data-tddone="${esc(t.id)}" aria-label="Mark as done">${ICON_CK}</button>`:'<span class="tick ro" aria-hidden="true"></span>'}
+    <div class="td-txt"><b>${esc(t.title)}${whoChip(t)}</b>${dueLabel(t.due_date)}</div>
+    <span class="td-acts">${mine?`<button type="button" data-tdtime="${esc(t.id)}" title="Start the timer for this" aria-label="Start the timer for this">${ICON_PLAY}</button><button type="button" data-tddel="${esc(t.id)}" title="Delete" aria-label="Delete">${ICON_X}</button>`:''}</span></div>`;}).join(''):`<p class="hint" style="padding:6px 0">${self?'Nothing on your list. Add something above.':'Nothing open right now.'}</p>`;
+  let last='';$('#tada-list').innerHTML=done.length?done.map(t=>{const d=iso(new Date(t.done_at));const head=d!==last?`<div class="tada-day">${esc(dayLabel(d))}</div>`:'';last=d;const mine=t.user_id===state.uid;
+    return head+(mine?`<button type="button" class="tada-item" data-tdundo="${esc(t.id)}" title="Move back to To Do">`:'<div class="tada-item ro">')+`<span class="ck">${ICON_CK}</span><span class="t">${esc(t.title)}${whoChip(t)}</span>`+(mine?'</button>':'</div>');}).join(''):`<p class="hint" style="padding:6px 0">${self?'Tick something off and it lands here.':'Nothing finished in the last 60 days.'}</p>`;
 }
 let toastT=null;
 function toast(html){const el=$('#toast');el.innerHTML=html;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},3500);}
@@ -426,7 +436,7 @@ document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>{state.tab=b.datas
 function shift(n){const a=state.anchor;if(isDayMode()){state.anchor=addDays(a,n);render();return;}state.anchor=(state.tab==='month'||(state.tab==='reports'&&state.rperiod==='month'))?new Date(a.getFullYear(),a.getMonth()+n,1):addDays(a,7*n);render();}
 $('#prev').onclick=()=>shift(-1);$('#next').onclick=()=>shift(1);$('#today').onclick=()=>{state.anchor=new Date();render();};
 $('#rperiod').onchange=e=>{state.rperiod=e.target.value;render();};
-$('#person').onchange=e=>{state.person=e.target.value;store.set('tt.person',state.person);render();};
+$('#person').onchange=e=>{state.person=e.target.value;store.set('tt.person',state.person);render();if(state.tab==='todo') loadTodos();};
 $('#wkdays').value=String(state.wkDays);$('#wkdays').onchange=e=>{state.wkDays=Number(e.target.value);store.set('tt.wkdays',String(state.wkDays));render();};
 $('#usual').onclick=async()=>{
   if(!guard()) return;const date=(isDayMode())?iso(state.anchor):(state.manual&&$('#t-date').value?$('#t-date').value:iso(new Date()));

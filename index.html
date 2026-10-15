@@ -252,6 +252,11 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .tada-item{display:flex;gap:9px;align-items:flex-start;width:100%;text-align:left;border:0;background:none;padding:6px 0;cursor:pointer;color:var(--ink)}
 .tada-item .ck{width:20px;height:20px;border-radius:50%;background:var(--field);display:grid;place-items:center;flex:none;color:#2E6B4A}
 .tada-item .ck svg{width:12px;height:12px}
+.panel h3 .count:empty{display:none}
+.td-who{font-size:.72rem;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 8px;margin-left:6px;white-space:nowrap}
+.tick.ro{cursor:default;border-style:dashed}
+.tada-item.ro{cursor:default}
+.readonly-note{font-size:.85rem;color:var(--muted);background:var(--hover);border-radius:10px;padding:10px 12px}
 .tada-item span.t{text-decoration:line-through;text-decoration-color:var(--muted);color:var(--muted);overflow-wrap:anywhere}
 .tada-item:hover span.t{color:var(--ink)}
 @keyframes tadaPop{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
@@ -375,14 +380,15 @@ td.r{text-align:right;font-family:var(--f-mono)}
       <div class="legend" style="margin-top:8px"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>Home</span><span><i style="background:var(--field)"></i>Field work</span><span><i style="background:var(--leave-bg);border:1px solid var(--line)"></i>Leave or holiday</span></div></section>
     <section id="v-reports" hidden aria-label="Reports" style="display:grid;gap:12px"></section>
     <section id="v-todo" hidden aria-label="To do and ta-da" style="display:grid;gap:12px">
+      <p class="readonly-note" id="td-ro" hidden></p>
       <form class="panel todo-add" id="todo-form" autocomplete="off">
         <input id="td-title" maxlength="200" placeholder="Add something to do, e.g. Call the bank about the card" aria-label="New to-do" required>
         <input type="date" id="td-due" aria-label="Due date (optional)" title="Due date (optional)">
         <button class="btn primary" type="submit">Add</button>
       </form>
       <div class="todo-cols">
-        <div class="panel"><h3>To Do <span class="count" id="td-count"></span></h3><div id="todo-list"></div></div>
-        <div class="panel tada" id="tada-panel"><h3>Ta-da! <span class="count" id="tada-count"></span></h3><p class="hint">Everything you've finished in the last 60 days. Tap one to move it back.</p><div id="tada-list"></div></div>
+        <div class="panel"><h3><span id="td-head">To Do</span> <span class="count" id="td-count"></span></h3><div id="todo-list"></div></div>
+        <div class="panel tada" id="tada-panel"><h3><span id="tada-head">Ta-da!</span> <span class="count" id="tada-count"></span></h3><p class="hint" id="tada-hint">Everything you've finished in the last 60 days. Tap one to move it back.</p><div id="tada-list"></div></div>
       </div>
     </section>
     <section id="v-team" hidden aria-label="Team" style="display:grid;gap:12px">
