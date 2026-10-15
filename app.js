@@ -19,7 +19,7 @@ const pcol=p=>{let h=0;for(const c of p) h=(h*31+c.charCodeAt(0))>>>0;return PCO
 const spanH=(s,e)=>{if(!s||!e) return null;const[a,b]=s.split(':').map(Number),[c,d]=e.split(':').map(Number);let m=(c*60+d)-(a*60+b);if(m<=0) m+=1440;return Math.round(m/60*100)/100};
 
 const state={tview:store.get('tt.tview')||'day',tab:store.get('tt.tab')||'tracker',person:store.get('tt.person')||'me',anchor:new Date(),wkDays:Number(store.get('tt.wkdays')||5),rperiod:'week',
-  manual:store.get('tt.manual')==='1',uid:null,rows:new Map(),loaded:new Set(),loading:new Set(),members:new Set(),names:{},profiles:[],invites:[],isAdmin:false,timer:null,canWrite:true,editing:null,vname:''};
+  manual:store.get('tt.manual')==='1',uid:null,rows:new Map(),loaded:new Set(),loading:new Set(),members:new Set(),names:{},profiles:[],invites:[],isAdmin:false,canViewAll:false,timer:null,canWrite:true,editing:null,vname:''};
 const CFG=window.TIMESHEET_CONFIG||{};
 const sb=(CFG.supabaseUrl&&CFG.supabaseAnonKey&&window.supabase)?window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey):null;
 
@@ -77,12 +77,12 @@ async function deleteEntry(id){
   if(error){if(old) state.rows.set(id,old);render();throwIf(error);}
 }
 function fillPeople(){
-  $('#person-wrap').hidden=!state.isAdmin;
+  $('#person-wrap').hidden=!state.canViewAll;
   const sel=$('#person'),cur=state.person;sel.innerHTML='<option value="me">My time</option><option value="all">Everyone</option>';
   for(const p of state.profiles){if(p.id===state.uid) continue;const o=document.createElement('option');o.value=p.id;o.textContent=p.full_name||p.email;sel.appendChild(o);}
-  sel.value=[...sel.options].some(o=>o.value===cur)?cur:'me';state.person=state.isAdmin?sel.value:'me';}
+  sel.value=[...sel.options].some(o=>o.value===cur)?cur:'me';state.person=state.canViewAll?sel.value:'me';}
 async function loadPeople(){
-  const{data}=await sb.from('profiles').select('id,email,full_name,is_admin,active,created_at').order('full_name');
+  const{data}=await sb.from('profiles').select('*').order('full_name');
   state.profiles=data||[];state.names={};state.profiles.forEach(p=>state.names[p.id]=p.full_name||p.email);
   if(state.isAdmin){const r=await sb.from('allowed_emails').select('*').order('invited_at');state.invites=r.data||[];}
   fillPeople();render();
@@ -263,20 +263,20 @@ function renderTeam(){
   const byEmail={};state.profiles.forEach(p=>byEmail[p.email]=p);
   const emails=new Set([...state.invites.map(i=>i.email),...state.profiles.map(p=>p.email)]);
   const rows=[...emails].map(em=>{const inv=state.invites.find(i=>i.email===em),p=byEmail[em];
-    const name=(p&&p.full_name)||(inv&&inv.full_name)||em;const admin=(p&&p.is_admin)||(inv&&inv.is_admin);
+    const name=(p&&p.full_name)||(inv&&inv.full_name)||em;const src=inv||p||{};const role=src.is_admin?'admin':src.can_view_all?'viewer':'member';const admin=role==='admin';
     const status=p&&!p.active?'off':!inv?'off':p?'on':'wait';
-    return {em,name,admin,status,p};}).sort((a,b)=>a.name.localeCompare(b.name));
+    return {em,name,admin,role,status,p};}).sort((a,b)=>a.name.localeCompare(b.name));
   $('#team-list').innerHTML=rows.length?rows.map(x=>`<div class="person-row"><div><b>${esc(x.name)}${x.p&&x.p.id===state.uid?' (you)':''}</b><span class="e">${esc(x.em)}</span></div>
-    <span class="badge${x.status==='wait'?' wait':x.status==='off'?' off':''}">${x.status==='on'?(x.admin?'Admin':'Active'):x.status==='wait'?'Invited':'Removed'}</span>
+    ${x.p&&x.p.id===state.uid?'<span class="badge">Admin</span>':x.status==='off'?'<span class="badge off">Removed</span>':`<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${x.status==='wait'?'<span class="badge wait">Invited</span>':''}<select data-role="${esc(x.em)}" aria-label="Role for ${esc(x.name)}"><option value="member"${x.role==='member'?' selected':''}>Member</option><option value="viewer"${x.role==='viewer'?' selected':''}>Viewer</option><option value="admin"${x.role==='admin'?' selected':''}>Admin</option></select></span>`}
     <span class="acts2">${x.p&&x.p.id===state.uid?'':x.status==='off'?`<button class="btn" type="button" data-reinvite="${esc(x.em)}" data-name="${esc(x.name)}">Restore access</button>`:`${x.status==='wait'?`<button class="btn" type="button" data-resend="${esc(x.em)}">Resend link</button>`:''}<button class="btn danger" type="button" data-remove="${esc(x.em)}">Remove</button>`}</span></div>`).join(''):'<p class="hint">No one invited yet.</p>';
 }
 async function sendLink(email){const{error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});return error;}
 $('#invite').addEventListener('submit',async ev=>{
-  ev.preventDefault();const name=$('#i-name').value.trim(),email=$('#i-email').value.trim().toLowerCase(),admin=$('#i-admin').checked;const msg=$('#i-msg');
+  ev.preventDefault();const name=$('#i-name').value.trim(),email=$('#i-email').value.trim().toLowerCase(),role=$('#i-role').value,admin=role==='admin',viewer=role!=='member';const msg=$('#i-msg');
   if(!name||!email) return;$('#i-go').disabled=true;msg.hidden=false;msg.textContent='Sending...';
   try{
-    const{error}=await sb.from('allowed_emails').upsert({email,full_name:name,is_admin:admin});throwIf(error);
-    await sb.from('profiles').update({active:true,is_admin:admin,full_name:name}).eq('email',email);
+    const{error}=await sb.from('allowed_emails').upsert({email,full_name:name,is_admin:admin,can_view_all:viewer});if(error&&/can_view_all/.test(error.message)) throw new Error('the Viewer role needs a one-time database update (supabase/roles.sql)');throwIf(error);
+    await sb.from('profiles').update({active:true,is_admin:admin,can_view_all:viewer,full_name:name}).eq('email',email);
     const le=await sendLink(email);
     msg.textContent=le?`${name} is invited, but the email could not be sent right now (${le.message}). Send them this link and ask them to sign in with ${email}: ${location.origin+location.pathname}`:`Invite sent. ${name} will get an email with a sign-in link.`;
     $('#invite').reset();await loadPeople();
@@ -343,6 +343,14 @@ document.addEventListener('click',async e=>{
   if(tm){const t=state.todos.find(x=>x.id===tm.dataset.tdtime);if(!t||!guard()) return;
     state.manual=false;store.set('tt.manual','0');$('#t-task').value=t.title;$('#t-notes').value='';syncManual();
     try{await startTimer(t.title,$('#t-project').value.trim(),$('#t-loc').value,'');window.scrollTo({top:0,behavior:'smooth'});}catch(err){showBanner('The timer did not start. Try again.');}}
+});
+document.addEventListener('change',async e=>{
+  const sel=e.target.closest('select[data-role]');if(!sel) return;
+  const em=sel.dataset.role,role=sel.value,patch={is_admin:role==='admin',can_view_all:role!=='member'};sel.disabled=true;
+  const a=await sb.from('allowed_emails').update(patch).eq('email',em);
+  const b=await sb.from('profiles').update(patch).eq('email',em);
+  if(a.error||b.error) showBanner(/can_view_all/.test((a.error||b.error).message)?'The Viewer role needs a one-time database update: run supabase/roles.sql in Supabase.':'That role change did not save. Try again.');
+  await loadPeople();
 });
 function renderReports(list,r){
   const work=list.filter(e=>!isLeave(e.location));
@@ -458,7 +466,7 @@ async function boot(session){
   state.uid=session.user.id;
   const{data:me}=await sb.from('profiles').select('*').eq('id',state.uid).maybeSingle();
   if(!me||!me.active){booted=false;await sb.auth.signOut();showLogin('Your access to this timesheet is not active. Ask Amira to invite you again.');return;}
-  state.isAdmin=!!me.is_admin;state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
+  state.isAdmin=!!me.is_admin;state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
   $('#who-line').textContent=me.full_name||me.email;$('#nav-team').hidden=!state.isAdmin;
   $('#login').hidden=true;$('#app').hidden=false;greet();
   const t=await sb.from('timers').select('*').eq('user_id',state.uid).maybeSingle();state.timer=timerFromRow(t.data);
