@@ -15,6 +15,7 @@ const isLeave=l=>LEAVE.includes(l);
 const normLoc=l=>l==='Out of office'?'Field work':l==='Time off'?'Annual leave':(l||'Office');
 const LOCVAR={'Office':'var(--office)','Home':'var(--home)','Field work':'var(--field)','Break':'var(--break)'};
 const isBreak=l=>l==='Break';
+const LOCLBL={'Home':'WFH'};const locLabel=l=>LOCLBL[l]||l;
 const toMin=t=>{const[a,b]=t.split(':').map(Number);return a*60+b;};
 const spanMin=e=>{if(!e.start||!e.end) return null;const s=toMin(e.start);let x=toMin(e.end);if(x<=s) x+=1440;return [s,x];};
 function breakOverlapH(e){const w=spanMin(e);if(!w) return 0;let m=0;
@@ -184,7 +185,7 @@ $('#m-manual').onclick=()=>{state.manual=true;store.set('tt.manual','1');syncMan
 ['#t-start','#t-end','#t-loc'].forEach(s=>$(s).addEventListener('change',syncManual));
 
 /* ---------- render ---------- */
-function locTag(l){return isLeave(l)?`<span class="loc leave">${esc(l)}</span>`:`<span class="loc" style="--lc:${LOCVAR[l]||'var(--office)'}">${esc(l)}</span>`;}
+function locTag(l){return isLeave(l)?`<span class="loc leave">${esc(l)}</span>`:`<span class="loc" style="--lc:${LOCVAR[l]||'var(--office)'}">${esc(locLabel(l))}</span>`;}
 function projTag(p){return p?`<span class="proj" style="--pc:${pcol(p)}">${esc(p)}</span>`:'';}
 const ICON_PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const ICON_EDIT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>';
@@ -396,11 +397,11 @@ function renderReports(list,r){
     <div class="cards">
       <div class="card"><div class="k">Total worked</div><div class="v">${dur(tot)}</div></div>
       <div class="card"><div class="k">Office</div><div class="v">${dur(sum('Office'))}</div></div>
-      <div class="card"><div class="k">Home</div><div class="v">${dur(sum('Home'))}</div></div>
+      <div class="card"><div class="k">WFH</div><div class="v">${dur(sum('Home'))}</div></div>
       <div class="card"><div class="k">Field work</div><div class="v">${dur(sum('Field work'))}</div></div>
     </div>
     <div class="panel"><h3>Hours per day</h3><div class="bars" style="overflow-x:auto">${bars}</div><div class="barlbls">${lbls}</div>
-      <div class="legend"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>Home</span><span><i style="background:var(--field)"></i>Field work</span></div></div>
+      <div class="legend"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>WFH</span><span><i style="background:var(--field)"></i>Field work</span></div></div>
     <div class="split">
       <div class="panel"><h3>By project</h3>${tbl(agg(e=>e.project||'No project'))}</div>
       <div class="panel"><h3>By person</h3>${tbl(agg(e=>nameOf(e.uid)))}</div>
@@ -412,13 +413,15 @@ function renderReports(list,r){
 function openEditor(id,date){
   const e=findMine(id);if(!e) return;state.editing={id};
   $('#e-task').value=e.task||'';$('#e-notes').value=e.notes||'';$('#e-project').value=e.project||'';$('#e-loc').value=normLoc(e.location);
-  $('#e-date').value=e.date;$('#e-hours').value=e.hours||'';$('#e-start').value=e.start||'';$('#e-end').value=e.end||'';
+  $('#e-date').value=e.date;$('#e-hours').value=e.hours||'';$('#e-mins').value=e.hours?Math.round(e.hours*60):'';$('#e-start').value=e.start||'';$('#e-end').value=e.end||'';
   $('#e-delq').hidden=true;$('#e-del').hidden=false;syncEditor();$('#editor').hidden=false;$('#e-task').focus();
 }
-function syncEditor(){const lv=isLeave($('#e-loc').value);['#e-start','#e-end','#e-hours'].forEach(s=>$(s).disabled=lv);}
+function syncEditor(){const lv=isLeave($('#e-loc').value);['#e-start','#e-end','#e-hours','#e-mins'].forEach(s=>$(s).disabled=lv);}
 const closeEditor=()=>{$('#editor').hidden=true;state.editing=null;};
 $('#e-loc').addEventListener('change',syncEditor);
-['#e-start','#e-end'].forEach(s=>$(s).addEventListener('change',()=>{const h=spanH($('#e-start').value,$('#e-end').value);if(h) $('#e-hours').value=h;}));
+['#e-start','#e-end'].forEach(s=>$(s).addEventListener('change',()=>{const h=exactH($('#e-start').value,$('#e-end').value);if(h){$('#e-hours').value=h;$('#e-mins').value=Math.round(h*60);}}));
+$('#e-mins').addEventListener('input',()=>{const m=parseInt($('#e-mins').value,10);if(!(m>0)) return;$('#e-hours').value=m/60;
+  const s=$('#e-start').value;if(s){const x=(toMin(s)+m)%1440;$('#e-end').value=pad(Math.floor(x/60))+':'+pad(x%60);}});
 $('#e-cancel').onclick=closeEditor;
 $('#editor').addEventListener('click',e=>{if(e.target.id==='editor') closeEditor();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#editor').hidden) closeEditor();});
@@ -428,8 +431,8 @@ $('#e-yes').onclick=async()=>{const{id}=state.editing;closeEditor();try{await de
 $('#e-form').addEventListener('submit',async ev=>{
   ev.preventDefault();const{id}=state.editing;const lv=isLeave($('#e-loc').value);
   const ch={task:$('#e-task').value.trim(),notes:$('#e-notes').value.trim(),project:$('#e-project').value.trim(),location:$('#e-loc').value,date:$('#e-date').value,
-    start:lv?'':$('#e-start').value,end:lv?'':$('#e-end').value,hours:lv?0:(parseFloat($('#e-hours').value)||spanH($('#e-start').value,$('#e-end').value)||0)};
-  if(!ch.task||!ch.date) return;if(!lv&&!(ch.hours>0)){$('#e-hours').focus();return;}
+    start:lv?'':$('#e-start').value,end:lv?'':$('#e-end').value,hours:lv?0:(exactH($('#e-start').value,$('#e-end').value)||parseFloat($('#e-hours').value)||0)};
+  if(!ch.task||!ch.date) return;if(!lv&&!(ch.hours>0)){$('#e-mins').focus();return;}
   closeEditor();
   try{await updateEntry(id,ch);}catch(e){showBanner('Your changes did not save. Try again.');}
 });
@@ -461,14 +464,14 @@ $('#usual').onclick=async()=>{
   if(mine.some(x=>isLeave(normLoc(x.location)))){showBanner('That day is marked as leave or a holiday. Remove that entry first if you worked.');return;}
   const add=[];const now=Date.now();
   if(!mine.some(x=>normLoc(x.location)==='Office'&&x.start==='11:00')) add.push({id:newId(),date,task:'Office hours',project:'',notes:'',hours:7,location:'Office',start:'11:00',end:'18:00',created:now});
-  if(!mine.some(x=>normLoc(x.location)==='Home'&&x.start==='23:00')) add.push({id:newId(),date,task:'Home hours',project:'',notes:'',hours:1,location:'Home',start:'23:00',end:'00:00',created:now+1});
+  if(!mine.some(x=>normLoc(x.location)==='Home'&&x.start==='23:00')) add.push({id:newId(),date,task:'WFH hours',project:'',notes:'',hours:1,location:'Home',start:'23:00',end:'00:00',created:now+1});
   if(!add.length){showBanner('Your usual day is already logged for '+dayLabel(date).toLowerCase()+'.');return;}
   try{await addEntries(add);$('#banner').hidden=true;state.anchor=parse(date);render();}catch(e){showBanner('That did not save. Try again.');}
 };
 $('#export').onclick=async()=>{
   const r=range();const l=inRange(visible(),r).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.start||'')<(b.start||'')?-1:1);
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
-  const csv=['Date,Person,Where,From,To,Project,Task,Notes,Hours',...l.map(e=>[e.date,nameOf(e.uid)==='You'?'Me':nameOf(e.uid),e.location,e.start,e.end,e.project,e.task,e.notes,e.hours].map(q).join(','))].join('\n');
+  const csv=['Date,Person,Where,From,To,Project,Task,Notes,Hours',...l.map(e=>[e.date,nameOf(e.uid)==='You'?'Me':nameOf(e.uid),locLabel(e.location),e.start,e.end,e.project,e.task,e.notes,e.hours].map(q).join(','))].join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download='timesheet_'+iso(r[0])+'_to_'+iso(r[1])+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
 };
 

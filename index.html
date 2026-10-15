@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Amira's Timesheet Tracker</title>
 <meta name="description" content="Daily time tracking for Amira's team: office, home, field work and leave.">
@@ -67,10 +68,10 @@ textarea{resize:vertical;min-height:70px;width:100%}
 .go{border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:800;letter-spacing:.06em;padding:0 22px;height:38px;margin:0 10px;cursor:pointer;text-transform:uppercase}
 .go.stop{background:var(--stop)}
 .go:disabled{opacity:.55;cursor:default}
-.modes{display:flex;flex-direction:column;gap:2px;padding:0 8px 0 0}
-.modes button{border:0;background:none;color:var(--muted);cursor:pointer;padding:3px;border-radius:4px;line-height:0}
-.modes button[aria-pressed="true"]{color:var(--accent)}
-.modes svg{width:16px;height:16px}
+.modes{display:flex;flex-direction:column;gap:3px;padding:0 10px 0 0}
+.modes button{border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;padding:4px 10px;border-radius:999px;display:flex;align-items:center;gap:5px;font-weight:700;font-size:.74rem;white-space:nowrap}
+.modes button[aria-pressed="true"]{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.modes svg{width:14px;height:14px}
 .manual{display:flex;align-items:center;gap:4px}
 .manual .dash{color:var(--muted)}
 .mins{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:.85rem;font-weight:600}
@@ -189,6 +190,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .sheet h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:1.4rem}
 .sheet .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sheet label{display:grid;gap:4px;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:0}
+.sheet input,.sheet select,.sheet textarea{font-weight:500;font-size:.95rem;text-transform:none;letter-spacing:0;color:var(--ink)}
 .sheet .full{grid-column:1/-1}
 .sheet .foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.88rem}
@@ -270,6 +272,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.todo-cols{grid-template-columns:1fr}}
 .signout{display:block;margin:10px 12px 0;border:0;background:none;color:var(--rail-muted);font-weight:600;cursor:pointer;padding:6px 0;text-decoration:underline;text-underline-offset:3px}
 .signout:hover{color:var(--rail-ink)}
+.ver{display:block;margin:8px 12px 0;color:var(--rail-muted);font-size:.7rem;opacity:.8}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .login-wrap{width:100%;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px));background:radial-gradient(circle at 20% 10%,var(--rail),transparent 60%),var(--bg)}
 .login-card{margin:0 auto;width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:32px 28px;display:grid;gap:14px;justify-items:center;text-align:center;box-shadow:0 18px 50px -28px rgba(46,58,78,.45)}
@@ -297,7 +300,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js"></script>
+<script src="config.js?v=20261015-2202"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -324,7 +327,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <button class="signout" id="signout" type="button">Sign out</button></div>
+    <button class="signout" id="signout" type="button">Sign out</button><small class="ver" id="ver">Updated 15 Oct 2026, 22:02</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -336,7 +339,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
       <div class="seg proj-s">
         <input id="t-project" list="projects" maxlength="60" placeholder="+ Project" aria-label="Project" style="width:120px;color:var(--accent);font-weight:600">
         <select id="t-loc" aria-label="Where">
-          <optgroup label="Working"><option>Office</option><option>Home</option><option>Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
+          <optgroup label="Working"><option>Office</option><option value="Home">WFH</option><option>Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
           <optgroup label="Not working"><option>Annual leave</option><option>Sick leave</option><option>Public holiday</option><option>Unpaid leave</option></optgroup>
         </select>
       </div>
@@ -353,8 +356,8 @@ td.r{text-align:right;font-family:var(--f-mono)}
       </div>
       <button class="go" id="go" type="submit">Start</button>
       <div class="modes" role="group" aria-label="Entry mode">
-        <button type="button" id="m-timer" aria-pressed="true" aria-label="Timer mode" title="Timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/></svg></button>
-        <button type="button" id="m-manual" aria-pressed="false" aria-label="Manual mode" title="Add time manually"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+        <button type="button" id="m-timer" aria-pressed="true" aria-label="Timer mode" title="Time it live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/></svg><span>Timer</span></button>
+        <button type="button" id="m-manual" aria-pressed="false" aria-label="Manual mode" title="Add time manually"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Add time</span></button>
       </div>
       <div class="notesrow"><input id="t-notes" maxlength="1000" placeholder="Add notes (optional)" aria-label="Notes"></div>
     </form>
@@ -381,7 +384,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <section id="v-tracker" aria-label="Time entries"></section>
     <section id="v-calendar" hidden aria-label="Calendar"><div class="calwrap"><div class="cal" id="cal"></div></div></section>
     <section id="v-month" hidden aria-label="Month"><div class="mwrap"><div class="mgrid" id="mgrid"></div></div>
-      <div class="legend" style="margin-top:8px"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>Home</span><span><i style="background:var(--field)"></i>Field work</span><span><i style="background:var(--break)"></i>Break</span><span><i style="background:var(--leave-bg);border:1px solid var(--line)"></i>Leave or holiday</span></div></section>
+      <div class="legend" style="margin-top:8px"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>WFH</span><span><i style="background:var(--field)"></i>Field work</span><span><i style="background:var(--break)"></i>Break</span><span><i style="background:var(--leave-bg);border:1px solid var(--line)"></i>Leave or holiday</span></div></section>
     <section id="v-reports" hidden aria-label="Reports" style="display:grid;gap:12px"></section>
     <section id="v-todo" hidden aria-label="To do and ta-da" style="display:grid;gap:12px">
       <p class="readonly-note" id="td-ro" hidden></p>
@@ -425,11 +428,12 @@ td.r{text-align:right;font-family:var(--f-mono)}
       <label class="full">Notes<textarea id="e-notes" maxlength="1000"></textarea></label>
       <label>Project<input id="e-project" list="projects" maxlength="60"></label>
       <label>Where<select id="e-loc">
-        <optgroup label="Working"><option>Office</option><option>Home</option><option>Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
+        <optgroup label="Working"><option>Office</option><option value="Home">WFH</option><option>Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
         <optgroup label="Not working"><option>Annual leave</option><option>Sick leave</option><option>Public holiday</option><option>Unpaid leave</option></optgroup>
       </select></label>
       <label>Date<input type="date" id="e-date" required></label>
-      <label>Hours<input type="number" id="e-hours" min="0.01" max="24" step="0.01"></label>
+      <label>Minutes<input type="number" id="e-mins" min="1" max="1440" step="1" inputmode="numeric"></label>
+      <input type="hidden" id="e-hours">
       <label>From<input type="time" id="e-start" step="60"></label>
       <label>To<input type="time" id="e-end" step="60"></label>
     </div>
@@ -442,6 +446,6 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js"></script>
+<script src="app.js?v=20261015-2202"></script>
 </body>
 </html>
