@@ -317,6 +317,8 @@ function renderTodo(){
   let last='';$('#tada-list').innerHTML=done.length?done.map(t=>{const d=iso(new Date(t.done_at));const head=d!==last?`<div class="tada-day">${esc(dayLabel(d))}</div>`:'';last=d;
     return head+`<button type="button" class="tada-item" data-tdundo="${esc(t.id)}" title="Move back to To Do"><span class="ck">${ICON_CK}</span><span class="t">${esc(t.title)}</span></button>`;}).join(''):'<p class="hint" style="padding:6px 0">Tick something off and it lands here.</p>';
 }
+let toastT=null;
+function toast(html){const el=$('#toast');el.innerHTML=html;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},3500);}
 async function todoWrite(fn,rollback){try{const{error}=await fn();if(error) throw error;}catch(e){rollback();renderTodo();showBanner('That change did not save. Try again.');}}
 $('#todo-form').addEventListener('submit',async ev=>{
   ev.preventDefault();if(!guard()) return;const title=$('#td-title').value.trim();if(!title) return;const due=$('#td-due').value||null;
@@ -328,9 +330,10 @@ document.addEventListener('click',async e=>{
   const dn=e.target.closest('[data-tddone]');
   if(dn){const t=state.todos.find(x=>x.id===dn.dataset.tddone);if(!t) return;const now=new Date().toISOString();t.done=true;t.done_at=now;renderTodo();
     const p=$('#tada-panel');p.classList.remove('pop');void p.offsetWidth;p.classList.add('pop');
+    toast(`<em>Ta-da!</em> Moved to your done list <button type="button" data-tdundo="${esc(t.id)}">Undo</button>`);
     await todoWrite(()=>sb.from('todos').update({done:true,done_at:now}).eq('id',t.id),()=>{t.done=false;t.done_at=null;});return;}
   const un=e.target.closest('[data-tdundo]');
-  if(un){const t=state.todos.find(x=>x.id===un.dataset.tdundo);if(!t) return;const prev=t.done_at;t.done=false;t.done_at=null;renderTodo();
+  if(un){$('#toast').hidden=true;const t=state.todos.find(x=>x.id===un.dataset.tdundo);if(!t) return;const prev=t.done_at;t.done=false;t.done_at=null;renderTodo();
     await todoWrite(()=>sb.from('todos').update({done:false,done_at:null}).eq('id',t.id),()=>{t.done=true;t.done_at=prev;});return;}
   const dl=e.target.closest('[data-tddel]');
   if(dl){if(dl.dataset.sure!=='1'){dl.dataset.sure='1';dl.style.color='var(--stop)';dl.title='Click again to delete';return;}

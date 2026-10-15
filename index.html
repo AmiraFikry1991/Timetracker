@@ -256,6 +256,9 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .tada-item:hover span.t{color:var(--ink)}
 @keyframes tadaPop{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
 @media (prefers-reduced-motion:no-preference){.tada.pop{animation:tadaPop .45s ease}}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-weight:600;box-shadow:0 10px 30px -10px rgba(46,58,78,.5);z-index:30;display:flex;gap:10px;align-items:center;max-width:calc(100% - 32px)}
+.toast em{font-family:var(--f-script);font-style:normal;font-size:1.5rem;line-height:1;color:#CFE2F7}
+.toast button{border:0;background:none;color:#CFE2F7;font-weight:700;cursor:pointer;text-decoration:underline;padding:0 0 0 4px}
 @media (max-width:800px){.todo-cols{grid-template-columns:1fr}}
 .signout{display:block;margin:10px 12px 0;border:0;background:none;color:var(--rail-muted);font-weight:600;cursor:pointer;padding:6px 0;text-decoration:underline;text-underline-offset:3px}
 .signout:hover{color:var(--rail-ink)}
@@ -427,6 +430,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
   </form>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <script src="app.js"></script>
 </body>
 </html>
