@@ -3,5 +3,5 @@
 // Both values are safe to publish: your data is protected by the access rules in supabase/setup.sql.
 window.TIMESHEET_CONFIG = {
   supabaseUrl: "https://apipuzgiijycfpmadnda.supabase.co",
-  supabaseAnonKey: ""   // the "anon public" key, or the "publishable" key on newer projects
+  supabaseAnonKey: "sb_publishable_rQSQXbfCsSb0KZ7k2wi5Iw_Blyqhdd8"
 };
