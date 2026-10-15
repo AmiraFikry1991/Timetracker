@@ -121,7 +121,7 @@ function paintTimer(){
 function tick(){const t=state.timer&&state.timer.running?state.timer:null;
   let s=t?Math.max(0,Math.floor((Date.now()-t.startedAt)/1000)):0;
   $('#clock').textContent=pad(Math.floor(s/3600))+':'+pad(Math.floor(s/60)%60)+':'+pad(s%60);
-  document.title=t&&!state.manual?$('#clock').textContent+' · '+(t.task||'Timer'):"Amira's Timesheet Tracker";}
+  document.title=t&&!state.manual?$('#clock').textContent+' · '+(t.task||'Timer'):"Timesheet";}
 setInterval(()=>{if(state.timer&&state.timer.running) tick();},1000);
 async function stopTimer(){
   const t=state.timer;if(!t||!t.running) return;
