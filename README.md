@@ -1,6 +1,6 @@
 # Amira's Timesheet Tracker
 
-A light, pastel time tracker for Amira and her team. Log time with a timer or by hand, see your day, week and month, track office, home and field work hours plus leave and public holidays, and export to CSV.
+A light, pastel time tracker for Amira and her team. Log time with a timer or by hand, keep a To Do list (and a Ta-da list of what you've finished), see your day, week and month, track office, home and field work hours plus leave and public holidays, and export to CSV.
 
 People sign in with just their email (a one-time link, no password). Only people the admin invites can get in. Each person sees and edits only their own time; admins see everyone's.
 
@@ -12,7 +12,8 @@ People sign in with just their email (a one-time link, no password). Only people
 | `app.js` | How the tracker works |
 | `config.js` | Your Supabase connection details (fill these in) |
 | `supabase/setup.sql` | Creates the database and its access rules (run once) |
-| `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png` | The pastel blue clock icon |
+| `supabase/todos.sql` | Adds the To Do and Ta-da lists to an existing database (run once) |
+| `logo.svg`, `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png` | The pastel blue stopwatch logo and icons |
 
 ## One-time setup
 

@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="16" fill="#D6E7F8"/>
-  <circle cx="32" cy="34" r="17" fill="#F6F9FD" stroke="#7FA6D6" stroke-width="3.5"/>
-  <path d="M32 24v10.5l7 5" fill="none" stroke="#4F82C0" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M26 11h12" stroke="#7FA6D6" stroke-width="3.5" stroke-linecap="round"/>
+  <rect width="64" height="64" rx="15" fill="#EAF3FC"/>
+  <g transform="translate(3.5 1) scale(0.9)"><circle cx="30" cy="36" r="21" fill="#FFFFFF" stroke="#7FA9DB" stroke-width="5"/>
+  <rect x="25" y="6.5" width="10" height="5.5" rx="2.2" fill="#7FA9DB"/>
+  <rect x="28.4" y="11" width="3.2" height="4" fill="#7FA9DB"/>
+  <circle cx="37.25" cy="23.44" r="1.45" fill="#B7CBE4"/><circle cx="44.50" cy="36.00" r="1.45" fill="#B7CBE4"/><circle cx="42.56" cy="43.25" r="1.45" fill="#B7CBE4"/><circle cx="37.25" cy="48.56" r="1.45" fill="#B7CBE4"/><circle cx="30.00" cy="50.50" r="1.45" fill="#B7CBE4"/><circle cx="22.75" cy="48.56" r="1.45" fill="#B7CBE4"/><circle cx="17.44" cy="43.25" r="1.45" fill="#B7CBE4"/><circle cx="15.50" cy="36.00" r="1.45" fill="#B7CBE4"/><circle cx="17.44" cy="28.75" r="1.45" fill="#B7CBE4"/><circle cx="22.75" cy="23.44" r="1.45" fill="#B7CBE4"/>
+  <path d="M21.5 36.5l6 6.2 12.5-14" fill="none" stroke="#4F82C0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M53 9.5l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z" fill="#9CB8DA"/>
+  <circle cx="58" cy="25" r="1.8" fill="#C9DAEE"/></g>
 </svg>

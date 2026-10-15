@@ -225,6 +225,38 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (prefers-reduced-motion:no-preference){.btn,.navbtn,.row{transition:background .12s,color .12s,border-color .12s}}
 
 /* Standalone additions: sign-in screen, team admin, sign out */
+.logo{width:42px;height:42px;flex:none;display:block}
+.logo.big{width:76px;height:76px}
+.todo-add{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.todo-add #td-title{flex:1 1 260px;min-height:44px;font-size:1rem}
+.todo-add #td-due{min-height:44px;color:var(--muted)}
+.todo-cols{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;align-items:start}
+.panel h3 .count{font-family:var(--f-body);font-size:.8rem;font-weight:700;color:var(--muted);background:var(--hover);border-radius:99px;padding:2px 9px;margin-left:6px;vertical-align:3px}
+.td-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.td-item:first-child{border-top:0}
+.tick{width:24px;height:24px;border-radius:50%;border:2px solid var(--office);background:var(--surface);cursor:pointer;display:grid;place-items:center;padding:0;color:transparent}
+.tick:hover{border-color:var(--accent);color:var(--accent)}
+.tick svg{width:14px;height:14px}
+.td-txt{min-width:0}
+.td-txt b{display:block;font-weight:600;overflow-wrap:anywhere}
+.due{font-size:.78rem;color:var(--muted);font-weight:600}
+.due.late{color:var(--stop)}
+.due.today{color:var(--accent)}
+.td-acts{display:flex;gap:2px}
+.td-acts button{border:0;background:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px;line-height:0}
+.td-acts button:hover{color:var(--accent);background:var(--accent-soft)}
+.td-acts svg{width:16px;height:16px}
+.tada{background:linear-gradient(160deg,var(--surface) 55%,var(--rail))}
+.tada h3{font-family:var(--f-script)!important;font-size:2rem!important;color:#2F4D7A!important;line-height:1}
+.tada-day{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:12px 0 4px}
+.tada-item{display:flex;gap:9px;align-items:flex-start;width:100%;text-align:left;border:0;background:none;padding:6px 0;cursor:pointer;color:var(--ink)}
+.tada-item .ck{width:20px;height:20px;border-radius:50%;background:var(--field);display:grid;place-items:center;flex:none;color:#2E6B4A}
+.tada-item .ck svg{width:12px;height:12px}
+.tada-item span.t{text-decoration:line-through;text-decoration-color:var(--muted);color:var(--muted);overflow-wrap:anywhere}
+.tada-item:hover span.t{color:var(--ink)}
+@keyframes tadaPop{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:no-preference){.tada.pop{animation:tadaPop .45s ease}}
+@media (max-width:800px){.todo-cols{grid-template-columns:1fr}}
 .signout{display:block;margin:10px 12px 0;border:0;background:none;color:var(--rail-muted);font-weight:600;cursor:pointer;padding:6px 0;text-decoration:underline;text-underline-offset:3px}
 .signout:hover{color:var(--rail-ink)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -258,7 +290,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 <body>
 <div class="login-wrap" id="login" hidden>
   <form class="login-card" id="login-form" autocomplete="on">
-    <span class="mono-mark big" aria-hidden="true">AF</span>
+    <img class="logo big" src="logo.svg" alt="" width="76" height="76">
     <h1>Amira's <em>Timesheet</em></h1>
     <p class="hint" id="login-hint">Sign in with the email you were invited with. We'll send you a link, no password needed.</p>
     <label for="l-email" class="sr">Email</label>
@@ -269,8 +301,9 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 <div class="app" id="app" hidden>
   <nav class="rail" aria-label="Sections">
-    <div class="brand"><span class="mono-mark" aria-hidden="true">AF</span><span class="brand-t">Amira's Timesheet<small id="who-line">Tracker</small></span></div>
+    <div class="brand"><img class="logo" src="logo.svg" alt="" width="42" height="42"><span class="brand-t">Amira's Timesheet<small id="who-line">Tracker</small></span></div>
     <button class="navbtn" data-tab="tracker" aria-current="page" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>Tracker</button>
+    <button class="navbtn" data-tab="todo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="5" height="5" rx="1.2"/><path d="M4.2 16.5l1.6 1.6 3-3.2M12 6.5h9M12 12h9M12 17.5h9"/></svg>To Do</button>
     <button class="navbtn" data-tab="dayview" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M5 9h14M9 2v4M15 2v4M9 13h6M9 17h4"/></svg>Day</button>
     <button class="navbtn" data-tab="calendar" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Week</button>
     <button class="navbtn" data-tab="month" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M9 9v12M15 9v12M3 15h18"/></svg>Month</button>
@@ -337,6 +370,17 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <section id="v-month" hidden aria-label="Month"><div class="mwrap"><div class="mgrid" id="mgrid"></div></div>
       <div class="legend" style="margin-top:8px"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>Home</span><span><i style="background:var(--field)"></i>Field work</span><span><i style="background:var(--leave-bg);border:1px solid var(--line)"></i>Leave or holiday</span></div></section>
     <section id="v-reports" hidden aria-label="Reports" style="display:grid;gap:12px"></section>
+    <section id="v-todo" hidden aria-label="To do and ta-da" style="display:grid;gap:12px">
+      <form class="panel todo-add" id="todo-form" autocomplete="off">
+        <input id="td-title" maxlength="200" placeholder="Add something to do, e.g. Call the bank about the card" aria-label="New to-do" required>
+        <input type="date" id="td-due" aria-label="Due date (optional)" title="Due date (optional)">
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+      <div class="todo-cols">
+        <div class="panel"><h3>To Do <span class="count" id="td-count"></span></h3><div id="todo-list"></div></div>
+        <div class="panel tada" id="tada-panel"><h3>Ta-da! <span class="count" id="tada-count"></span></h3><p class="hint">Everything you've finished in the last 60 days. Tap one to move it back.</p><div id="tada-list"></div></div>
+      </div>
+    </section>
     <section id="v-team" hidden aria-label="Team" style="display:grid;gap:12px">
       <form class="panel invite" id="invite" autocomplete="off">
         <h3>Invite someone</h3>

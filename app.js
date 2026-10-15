@@ -53,7 +53,7 @@ async function fetchMonth(mk){
   finally{state.loading.delete(mk);}
 }
 async function ensureLoaded(){
-  if(!sb||!state.uid||state.tab==='team') return;
+  if(!sb||!state.uid||state.tab==='team'||state.tab==='todo') return;
   const need=monthsIn(range()).filter(mk=>!state.loaded.has(mk)&&!state.loading.has(mk));
   if(!need.length) return;
   await Promise.all(need.map(fetchMonth));render();
@@ -178,9 +178,11 @@ function isDayMode(){return (state.tab==='tracker'&&state.tview==='day')||state.
 function render(){
   document.querySelectorAll('.navbtn').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===state.tab?'page':'false'));
   if(state.tab==='team'&&!state.isAdmin) state.tab='tracker';
-  ['tracker','calendar','month','reports','team'].forEach(t=>$('#v-'+t).hidden=(state.tab==='dayview'?'calendar':state.tab)!==t);
-  $('.toolbar').hidden=state.tab==='team';$('.foot2').hidden=state.tab==='team';
+  ['tracker','calendar','month','reports','team','todo'].forEach(t=>$('#v-'+t).hidden=(state.tab==='dayview'?'calendar':state.tab)!==t);
+  const side=state.tab==='team'||state.tab==='todo';
+  $('.toolbar').hidden=side;$('.foot2').hidden=side;
   if(state.tab==='team'){renderTeam();return;}
+  if(state.tab==='todo'){renderTodo();return;}
   ensureLoaded();
   $('#rperiod').hidden=state.tab!=='reports';
   $('#tview').hidden=state.tab!=='tracker';
@@ -290,6 +292,54 @@ document.addEventListener('click',async e=>{
   if(rs){rs.disabled=true;const er=await sendLink(rs.dataset.resend);rs.textContent=er?'Could not send':'Link sent';return;}
   const ri=e.target.closest('[data-reinvite]');
   if(ri){ri.disabled=true;await sb.from('allowed_emails').upsert({email:ri.dataset.reinvite,full_name:ri.dataset.name});await sb.from('profiles').update({active:true}).eq('email',ri.dataset.reinvite);await loadPeople();}
+});
+/* ---------- to do / ta-da ---------- */
+state.todos=[];
+const ICON_CK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const ICON_X='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+async function loadTodos(){
+  if(!sb||!state.uid) return;
+  const since=addDays(new Date(),-60).toISOString();
+  const{data,error}=await sb.from('todos').select('*').or('done.eq.false,done_at.gte.'+since).order('created_at');
+  if(error){state.todoError=true;}else{state.todoError=false;state.todos=data||[];}
+  if(state.tab==='todo') renderTodo();
+}
+function dueLabel(d){if(!d) return '';const t=iso(new Date());const cls=d<t?'late':d===t?'today':'';
+  const lab=d===t?'Due today':d<t?'Overdue, '+dayLabel(d).replace('Yesterday','yesterday'):'Due '+dayLabel(d);return `<span class="due ${cls}">${esc(lab)}</span>`;}
+function renderTodo(){
+  if(state.todoError){$('#todo-list').innerHTML='<p class="hint">The To Do list needs a one-time database update. Run supabase/todos.sql in the Supabase SQL editor, then refresh.</p>';$('#tada-list').innerHTML='';return;}
+  const open=state.todos.filter(t=>!t.done).sort((a,b)=>(a.due_date||'9999')<(b.due_date||'9999')?-1:(a.due_date||'9999')>(b.due_date||'9999')?1:a.created_at<b.created_at?-1:1);
+  const done=state.todos.filter(t=>t.done).sort((a,b)=>a.done_at<b.done_at?1:-1);
+  $('#td-count').textContent=open.length||'';$('#tada-count').textContent=done.length||'';
+  $('#todo-list').innerHTML=open.length?open.map(t=>`<div class="td-item"><button class="tick" type="button" data-tddone="${esc(t.id)}" aria-label="Mark as done">${ICON_CK}</button>
+    <div class="td-txt"><b>${esc(t.title)}</b>${dueLabel(t.due_date)}</div>
+    <span class="td-acts"><button type="button" data-tdtime="${esc(t.id)}" title="Start the timer for this" aria-label="Start the timer for this">${ICON_PLAY}</button><button type="button" data-tddel="${esc(t.id)}" title="Delete" aria-label="Delete">${ICON_X}</button></span></div>`).join(''):'<p class="hint" style="padding:6px 0">Nothing on your list. Add something above.</p>';
+  let last='';$('#tada-list').innerHTML=done.length?done.map(t=>{const d=iso(new Date(t.done_at));const head=d!==last?`<div class="tada-day">${esc(dayLabel(d))}</div>`:'';last=d;
+    return head+`<button type="button" class="tada-item" data-tdundo="${esc(t.id)}" title="Move back to To Do"><span class="ck">${ICON_CK}</span><span class="t">${esc(t.title)}</span></button>`;}).join(''):'<p class="hint" style="padding:6px 0">Tick something off and it lands here.</p>';
+}
+async function todoWrite(fn,rollback){try{const{error}=await fn();if(error) throw error;}catch(e){rollback();renderTodo();showBanner('That change did not save. Try again.');}}
+$('#todo-form').addEventListener('submit',async ev=>{
+  ev.preventDefault();if(!guard()) return;const title=$('#td-title').value.trim();if(!title) return;const due=$('#td-due').value||null;
+  const t={id:newId(),user_id:state.uid,title,due_date:due,done:false,done_at:null,created_at:new Date().toISOString()};
+  state.todos.push(t);$('#todo-form').reset();renderTodo();$('#td-title').focus();
+  await todoWrite(()=>sb.from('todos').insert({id:t.id,user_id:t.user_id,title,due_date:due}),()=>{state.todos=state.todos.filter(x=>x.id!==t.id);});
+});
+document.addEventListener('click',async e=>{
+  const dn=e.target.closest('[data-tddone]');
+  if(dn){const t=state.todos.find(x=>x.id===dn.dataset.tddone);if(!t) return;const now=new Date().toISOString();t.done=true;t.done_at=now;renderTodo();
+    const p=$('#tada-panel');p.classList.remove('pop');void p.offsetWidth;p.classList.add('pop');
+    await todoWrite(()=>sb.from('todos').update({done:true,done_at:now}).eq('id',t.id),()=>{t.done=false;t.done_at=null;});return;}
+  const un=e.target.closest('[data-tdundo]');
+  if(un){const t=state.todos.find(x=>x.id===un.dataset.tdundo);if(!t) return;const prev=t.done_at;t.done=false;t.done_at=null;renderTodo();
+    await todoWrite(()=>sb.from('todos').update({done:false,done_at:null}).eq('id',t.id),()=>{t.done=true;t.done_at=prev;});return;}
+  const dl=e.target.closest('[data-tddel]');
+  if(dl){if(dl.dataset.sure!=='1'){dl.dataset.sure='1';dl.style.color='var(--stop)';dl.title='Click again to delete';return;}
+    const t=state.todos.find(x=>x.id===dl.dataset.tddel);state.todos=state.todos.filter(x=>x!==t);renderTodo();
+    await todoWrite(()=>sb.from('todos').delete().eq('id',t.id),()=>{state.todos.push(t);});return;}
+  const tm=e.target.closest('[data-tdtime]');
+  if(tm){const t=state.todos.find(x=>x.id===tm.dataset.tdtime);if(!t||!guard()) return;
+    state.manual=false;store.set('tt.manual','0');$('#t-task').value=t.title;$('#t-notes').value='';syncManual();
+    try{await startTimer(t.title,$('#t-project').value.trim(),$('#t-loc').value,'');window.scrollTo({top:0,behavior:'smooth'});}catch(err){showBanner('The timer did not start. Try again.');}}
 });
 function renderReports(list,r){
   const work=list.filter(e=>!isLeave(e.location));
@@ -409,12 +459,12 @@ async function boot(session){
   $('#who-line').textContent=me.full_name||me.email;$('#nav-team').hidden=!state.isAdmin;
   $('#login').hidden=true;$('#app').hidden=false;greet();
   const t=await sb.from('timers').select('*').eq('user_id',state.uid).maybeSingle();state.timer=timerFromRow(t.data);
-  syncManual();render();loadPeople();
+  syncManual();render();loadPeople();loadTodos();
   sb.channel('live').on('postgres_changes',{event:'*',schema:'public',table:'entries'},p=>{
     if(p.eventType==='DELETE'){state.rows.delete(p.old.id);}
     else{const e=fromRow(p.new);if(state.loaded.has(e.date.slice(0,7))) state.rows.set(e.id,e);}
     render();
-  }).on('postgres_changes',{event:'*',schema:'public',table:'timers',filter:'user_id=eq.'+state.uid},p=>{state.timer=p.eventType==='DELETE'?null:timerFromRow(p.new);paintTimer();}).subscribe();
+  }).on('postgres_changes',{event:'*',schema:'public',table:'timers',filter:'user_id=eq.'+state.uid},p=>{state.timer=p.eventType==='DELETE'?null:timerFromRow(p.new);paintTimer();}).on('postgres_changes',{event:'*',schema:'public',table:'todos',filter:'user_id=eq.'+state.uid},()=>loadTodos()).subscribe();
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible') refreshLoaded();});
 }
 greet();setInterval(greet,60000);syncManual();
