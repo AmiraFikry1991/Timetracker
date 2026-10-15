@@ -15,7 +15,8 @@ const isLeave=l=>LEAVE.includes(l);
 const normLoc=l=>l==='Out of office'?'Field work':l==='Time off'?'Annual leave':(l||'Office');
 const LOCVAR={'Office':'var(--office)','Home':'var(--home)','Field work':'var(--field)','Break':'var(--break)'};
 const isBreak=l=>l==='Break';
-const LOCLBL={'Home':'WFH'};const locLabel=l=>LOCLBL[l]||l;
+const LOCLBL={'Home':'WFH'};
+const WFH_ALLOWED=['amira.fikry.mahmoud@gmail.com']; // only these people get the WFH option and "Log my usual day"const locLabel=l=>LOCLBL[l]||l;
 const toMin=t=>{const[a,b]=t.split(':').map(Number);return a*60+b;};
 const spanMin=e=>{if(!e.start||!e.end) return null;const s=toMin(e.start);let x=toMin(e.end);if(x<=s) x+=1440;return [s,x];};
 function breakOverlapH(e){const w=spanMin(e);if(!w) return 0;let m=0;
@@ -496,7 +497,8 @@ async function boot(session){
   state.uid=session.user.id;
   const{data:me}=await sb.from('profiles').select('*').eq('id',state.uid).maybeSingle();
   if(!me||!me.active){booted=false;await sb.auth.signOut();showLogin('Your access to this timesheet is not active. Ask Amira to invite you again.');return;}
-  state.isAdmin=!!me.is_admin;state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
+  state.isAdmin=!!me.is_admin;
+  if(!WFH_ALLOWED.includes((me.email||'').toLowerCase())){document.querySelectorAll('#t-loc option[value="Home"],#e-loc option[value="Home"]').forEach(o=>o.remove());$('#usual').hidden=true;}state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
   $('#who-line').textContent=me.full_name||me.email;$('#nav-team').hidden=!state.isAdmin;
   $('#login').hidden=true;$('#app').hidden=false;greet();
   const t=await sb.from('timers').select('*').eq('user_id',state.uid).maybeSingle();state.timer=timerFromRow(t.data);
