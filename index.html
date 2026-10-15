@@ -300,7 +300,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261015-2215"></script>
+<script src="config.js?v=20261015-2220"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -327,7 +327,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <button class="signout" id="signout" type="button">Sign out</button><small class="ver" id="ver">Updated 15 Oct 2026, 22:15</small></div>
+    <button class="signout" id="signout" type="button">Sign out</button><small class="ver" id="ver">Updated 15 Oct 2026, 22:20</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -339,7 +339,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
       <div class="seg proj-s">
         <input id="t-project" list="projects" maxlength="60" placeholder="+ Project" aria-label="Project" style="width:120px;color:var(--accent);font-weight:600">
         <select id="t-loc" aria-label="Where">
-          <optgroup label="Working"><option>Office</option><option value="Home">WFH</option><option>Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
+          <optgroup label="Working"><option>Office</option><option value="Home">WFH</option><option value="Field work">Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
           <optgroup label="Not working"><option>Annual leave</option><option>Sick leave</option><option>Public holiday</option><option>Unpaid leave</option></optgroup>
         </select>
       </div>
@@ -428,7 +428,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
       <label class="full">Notes<textarea id="e-notes" maxlength="1000"></textarea></label>
       <label>Project<input id="e-project" list="projects" maxlength="60"></label>
       <label>Where<select id="e-loc">
-        <optgroup label="Working"><option>Office</option><option value="Home">WFH</option><option>Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
+        <optgroup label="Working"><option>Office</option><option value="Home">WFH</option><option value="Field work">Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
         <optgroup label="Not working"><option>Annual leave</option><option>Sick leave</option><option>Public holiday</option><option>Unpaid leave</option></optgroup>
       </select></label>
       <label>Date<input type="date" id="e-date" required></label>
@@ -446,6 +446,6 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261015-2215"></script>
+<script src="app.js?v=20261015-2220"></script>
 </body>
 </html>
