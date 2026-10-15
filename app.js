@@ -13,7 +13,14 @@ const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec
 const LEAVE=['Annual leave','Sick leave','Public holiday','Unpaid leave'];
 const isLeave=l=>LEAVE.includes(l);
 const normLoc=l=>l==='Out of office'?'Field work':l==='Time off'?'Annual leave':(l||'Office');
-const LOCVAR={'Office':'var(--office)','Home':'var(--home)','Field work':'var(--field)'};
+const LOCVAR={'Office':'var(--office)','Home':'var(--home)','Field work':'var(--field)','Break':'var(--break)'};
+const isBreak=l=>l==='Break';
+const toMin=t=>{const[a,b]=t.split(':').map(Number);return a*60+b;};
+const spanMin=e=>{if(!e.start||!e.end) return null;const s=toMin(e.start);let x=toMin(e.end);if(x<=s) x+=1440;return [s,x];};
+function breakOverlapH(e){const w=spanMin(e);if(!w) return 0;let m=0;
+  for(const b of state.rows.values()){if(b.uid!==e.uid||b.date!==e.date||!isBreak(b.location)) continue;const s=spanMin(b);if(!s) continue;m+=Math.max(0,Math.min(w[1],s[1])-Math.max(w[0],s[0]));}
+  return m/60;}
+const workH=e=>(isBreak(e.location)||isLeave(e.location))?0:Math.max(0,(+e.hours||0)-breakOverlapH(e));
 const PCOL=['#5E82C2','#4F9A7C','#C06A90','#A47C3E','#7E6BC4','#C97A62','#4A8EA3','#7F8C45'];
 const pcol=p=>{let h=0;for(const c of p) h=(h*31+c.charCodeAt(0))>>>0;return PCOL[h%PCOL.length]};
 const spanH=(s,e)=>{if(!s||!e) return null;const[a,b]=s.split(':').map(Number),[c,d]=e.split(':').map(Number);let m=(c*60+d)-(a*60+b);if(m<=0) m+=1440;return Math.round(m/60*100)/100};
@@ -191,7 +198,7 @@ function render(){
   const r=range(),list=inRange(visible(),r),showWho=state.person==='all';
   const tw=iso(addDays(new Date(),-new Date().getDay()));
   $('#plabel').textContent=(isDayMode())?dayLabel(iso(r[0])):(state.tab==='month'||(state.tab==='reports'&&state.rperiod==='month'))?(MN[r[0].getMonth()]+' '+r[0].getFullYear()):(iso(r[0])===tw?'This week':MN[r[0].getMonth()]+' '+r[0].getDate()+' to '+MN[r[1].getMonth()]+' '+r[1].getDate());
-  $('#ptotal').textContent=dur(list.reduce((t,e)=>t+(+e.hours||0),0));
+  $('#ptotal').textContent=dur(list.reduce((t,e)=>t+workH(e),0));
   $('#projects').innerHTML=[...new Set(allEntries().map(e=>e.project).filter(Boolean))].sort().map(p=>`<option value="${esc(p)}"></option>`).join('');
   if(state.tab==='tracker') renderTracker(list,showWho,r);
   if(state.tab==='calendar'||state.tab==='dayview') renderCal(list,showWho,r);
@@ -205,7 +212,7 @@ function renderTracker(list,showWho){
   if(!days.length){$('#v-tracker').innerHTML=`<div class="daygrp"><div class="empty"><b>No time logged this week</b>Type what you're working on above and press Start, or switch to manual mode (the list icon) to add a block of time. "Log my usual day" adds your office and home hours in one tap.</div></div>`;return;}
   $('#v-tracker').innerHTML=days.map(ds=>{
     const es=by[ds].slice().sort((a,b)=>(b.start||'')<(a.start||'')?-1:(b.start||'')>(a.start||'')?1:0);
-    const tot=es.reduce((t,e)=>t+(+e.hours||0),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
+    const tot=es.reduce((t,e)=>t+workH(e),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
     return `<div class="daygrp${lv?' leave':''}"><div class="dayhead"><span class="d">${dayLabel(ds)}</span><span class="t">${lv&&!tot?'Day off':'Total'}<b>${lv&&!tot?'':dur(tot)}</b></span></div>`+
       es.map(e=>{const mine=e.uid===state.uid,lvE=isLeave(e.location);
         return `<div class="row"><div class="desc"><b>${esc(e.task)}</b>${e.notes?`<span>${esc(e.notes)}</span>`:''}</div>
@@ -221,7 +228,7 @@ function renderCal(list,showWho,r){
   let lo=9,hi=24;timed.forEach(e=>{const s=+e.start.slice(0,2);lo=Math.min(lo,s);});lo=Math.max(0,lo);
   const H=(hi-lo)*PX;const t=iso(new Date());
   let h=`<div class="hcell" style="border-left:0"></div>`;
-  for(let i=0;i<n;i++){const d=addDays(r[0],i),ds=iso(d);const tot=list.filter(e=>e.date===ds).reduce((a,e)=>a+(+e.hours||0),0);
+  for(let i=0;i<n;i++){const d=addDays(r[0],i),ds=iso(d);const tot=list.filter(e=>e.date===ds).reduce((a,e)=>a+workH(e),0);
     h+=`<div class="hcell${ds===t?' today':''}">${DN[d.getDay()]} ${d.getDate()}<b>${dur(tot)}</b></div>`;}
   let g=`<div class="gutter" style="height:${H}px">`;for(let x=lo;x<=hi;x++) g+=`<span style="top:${(x-lo)*PX}px">${pad(x%24)}:00</span>`;g+='</div>';
   let cols='';
@@ -233,7 +240,7 @@ function renderCal(list,showWho,r){
       if(!e.start||!e.end) return;
       const[sh,sm]=e.start.split(':').map(Number);let top=((sh+sm/60)-lo)*PX;let ht=Math.max(18,(+e.hours||0)*PX);
       if(top+ht>H) ht=H-top;
-      c+=`<button type="button" class="blk" style="top:${top}px;height:${ht}px;--lc:${LOCVAR[e.location]||'var(--office)'}" ${e.uid===state.uid?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(e.task)} ${esc(e.start)} to ${esc(e.end)}"><b>${esc(e.task)}</b>${esc(e.start)} - ${esc(e.end)}${showWho?' · '+esc(nameOf(e.uid)):''}${n===1&&e.project?' · '+esc(e.project):''}${n===1&&e.notes?'<br>'+esc(e.notes):''}</button>`;
+      c+=`<button type="button" class="blk${isBreak(e.location)?' brk':''}" style="top:${top}px;height:${ht}px;--lc:${LOCVAR[e.location]||'var(--office)'}" ${e.uid===state.uid?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(e.task)} ${esc(e.start)} to ${esc(e.end)}"><b>${esc(e.task)}</b>${esc(e.start)} - ${esc(e.end)}${showWho?' · '+esc(nameOf(e.uid)):''}${n===1&&e.project?' · '+esc(e.project):''}${n===1&&e.notes?'<br>'+esc(e.notes):''}</button>`;
     });
     if(ds===t){const now=new Date();const y=((now.getHours()+now.getMinutes()/60)-lo)*PX;if(y>=0&&y<=H) c+=`<div class="now" style="top:${y}px"></div>`;}
     cols+=c+'</div>';}
@@ -248,7 +255,7 @@ function renderMonth(list,showWho,r){
       const d=addDays(w,i),ds=iso(d);
       if(d.getMonth()!==mon){h+=`<div class="mc out" aria-hidden="true"><div class="top"><span class="n">${d.getDate()}</span></div></div>`;continue;}
       const es=list.filter(e=>e.date===ds).sort((a,b)=>(a.start||'99')<(b.start||'99')?-1:1);
-      const tot=es.reduce((a,e)=>a+(+e.hours||0),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
+      const tot=es.reduce((a,e)=>a+workH(e),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
       const items=es.map(e=>{
         if(isLeave(e.location)) return `<span class="mt lv" title="${esc(e.notes||'')}">${esc(e.location)}</span>`;
         const mine=e.uid===state.uid;const tip=[e.task,e.start&&e.end?e.start+' to '+e.end:'',e.project,e.notes].filter(Boolean).join(' | ');
@@ -363,16 +370,17 @@ document.addEventListener('change',async e=>{
   await loadPeople();
 });
 function renderReports(list,r){
-  const work=list.filter(e=>!isLeave(e.location));
-  const tot=work.reduce((a,e)=>a+(+e.hours||0),0);
-  const sum=l=>work.filter(e=>e.location===l).reduce((a,e)=>a+(+e.hours||0),0);
+  const work=list.filter(e=>!isLeave(e.location)&&!isBreak(e.location));
+  const brk=list.filter(e=>isBreak(e.location)).reduce((a,e)=>a+(+e.hours||0),0);
+  const tot=work.reduce((a,e)=>a+workH(e),0);
+  const sum=l=>work.filter(e=>e.location===l).reduce((a,e)=>a+workH(e),0);
   const days=[];for(let d=new Date(r[0]);d<=r[1];d=addDays(d,1)){if(state.rperiod==='week'||d.getDay()<5||state.wkDays===7) days.push(iso(d));}
   const leaveDays={};list.filter(e=>isLeave(e.location)).forEach(e=>{(leaveDays[e.location]=leaveDays[e.location]||new Set()).add(e.uid+e.date)});
-  const perDay=days.map(ds=>{const o={ds};['Office','Home','Field work'].forEach(l=>o[l]=work.filter(e=>e.date===ds&&e.location===l).reduce((a,e)=>a+(+e.hours||0),0));o.t=o.Office+o.Home+o['Field work'];return o;});
+  const perDay=days.map(ds=>{const o={ds};['Office','Home','Field work'].forEach(l=>o[l]=work.filter(e=>e.date===ds&&e.location===l).reduce((a,e)=>a+workH(e),0));o.t=o.Office+o.Home+o['Field work'];return o;});
   const mx=Math.max(8,...perDay.map(o=>o.t));
   const bars=perDay.map(o=>`<div class="bar"><span class="val">${o.t?dur(o.t):''}</span><div class="stack" style="height:${(o.t/mx*100).toFixed(1)}%">${['Office','Home','Field work'].map(l=>o[l]?`<i style="height:${(o[l]/o.t*100).toFixed(1)}%;background:${LOCVAR[l]}"></i>`:'').join('')}</div></div>`).join('');
   const lbls=perDay.map(o=>{const d=parse(o.ds);return `<span>${state.rperiod==='week'?DN[d.getDay()]:d.getDate()}</span>`}).join('');
-  const agg=k=>{const m={};work.forEach(e=>{const x=k(e);m[x]=(m[x]||0)+(+e.hours||0)});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+  const agg=k=>{const m={};work.forEach(e=>{const x=k(e);m[x]=(m[x]||0)+workH(e)});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
   const tbl=rows=>{const m=Math.max(1,...rows.map(x=>x[1]));return rows.length?`<table>${rows.map(([k,v])=>`<tr><td>${esc(k)}<div class="meter"><i style="width:${(v/m*100).toFixed(0)}%"></i></div></td><td class="r">${dur(v)}</td></tr>`).join('')}</table>`:'<p class="empty" style="padding:8px 0">No hours in this period.</p>';};
   const leaveRows=LEAVE.filter(l=>leaveDays[l]).map(l=>`<tr><td>${esc(l)}</td><td class="r">${leaveDays[l].size}d</td></tr>`).join('');
   $('#v-reports').innerHTML=`
@@ -387,7 +395,7 @@ function renderReports(list,r){
     <div class="split">
       <div class="panel"><h3>By project</h3>${tbl(agg(e=>e.project||'No project'))}</div>
       <div class="panel"><h3>By person</h3>${tbl(agg(e=>nameOf(e.uid)))}</div>
-      <div class="panel"><h3>Leave and holidays</h3>${leaveRows?`<table>${leaveRows}</table>`:'<p class="empty" style="padding:8px 0">No leave in this period.</p>'}</div>
+      <div class="panel"><h3>Breaks and leave</h3>${leaveRows||brk?`<table>${brk?`<tr><td>Breaks</td><td class="r">${dur(brk)}</td></tr>`:''}${leaveRows}</table>`:'<p class="empty" style="padding:8px 0">No leave in this period.</p>'}</div>
     </div>`;
 }
 

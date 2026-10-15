@@ -23,7 +23,7 @@ html,body{margin:0;height:100%}
   --accent:#4F82C0; --accent-ink:#FFFFFF; --accent-soft:#E5EFFA; --stop:#D9667A;
   --gold:#3D5F8F; --gold-soft:#EAF1FA; --f-script:"Pinyon Script","Snell Roundhand","Apple Chancery",cursive;
   --rail:#EAF3FC; --rail-ink:#2E3A4E; --rail-muted:#6A819F; --rail-hover:#DAE8F7;
-  --office:#D3E5F7; --home:#FBE1DB; --field:#DFF2E5; --leave-bg:#F5F4F7; --leave-ink:#8E889C; --on-pastel:#2E3A4E; color-scheme:light;
+  --office:#D3E5F7; --home:#FBE1DB; --field:#DFF2E5; --break:#FFF1C7; --leave-bg:#F5F4F7; --leave-ink:#8E889C; --on-pastel:#2E3A4E; color-scheme:light;
   --f-display:"DM Serif Display",Georgia,"Times New Roman",serif;
   --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -132,6 +132,7 @@ textarea{resize:vertical;min-height:70px;width:100%}
 .cal .line{position:absolute;left:0;right:0;border-top:1px solid var(--line);pointer-events:none}
 .blk{position:absolute;left:3px;right:3px;border-radius:3px;padding:3px 5px;font-size:.72rem;line-height:1.2;overflow:hidden;color:var(--on-pastel);background:var(--lc,var(--office));border:0;text-align:left;cursor:pointer}
 .blk b{display:block;font-weight:700}
+.blk.brk{z-index:2;left:14%;right:6px;border:1px dashed #E2C77A;box-shadow:0 2px 8px -4px rgba(46,58,78,.35)}
 .blk.leave{background:var(--surface);color:var(--leave-ink);border:1px solid var(--line);font-weight:700;text-align:center;top:6px!important;height:auto!important}
 .now{position:absolute;left:0;right:0;border-top:2px solid var(--stop);pointer-events:none}
 
@@ -333,7 +334,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
       <div class="seg proj-s">
         <input id="t-project" list="projects" maxlength="60" placeholder="+ Project" aria-label="Project" style="width:120px;color:var(--accent);font-weight:600">
         <select id="t-loc" aria-label="Where">
-          <optgroup label="Working"><option>Office</option><option>Home</option><option>Field work</option></optgroup>
+          <optgroup label="Working"><option>Office</option><option>Home</option><option>Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
           <optgroup label="Not working"><option>Annual leave</option><option>Sick leave</option><option>Public holiday</option><option>Unpaid leave</option></optgroup>
         </select>
       </div>
@@ -377,7 +378,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <section id="v-tracker" aria-label="Time entries"></section>
     <section id="v-calendar" hidden aria-label="Calendar"><div class="calwrap"><div class="cal" id="cal"></div></div></section>
     <section id="v-month" hidden aria-label="Month"><div class="mwrap"><div class="mgrid" id="mgrid"></div></div>
-      <div class="legend" style="margin-top:8px"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>Home</span><span><i style="background:var(--field)"></i>Field work</span><span><i style="background:var(--leave-bg);border:1px solid var(--line)"></i>Leave or holiday</span></div></section>
+      <div class="legend" style="margin-top:8px"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>Home</span><span><i style="background:var(--field)"></i>Field work</span><span><i style="background:var(--break)"></i>Break</span><span><i style="background:var(--leave-bg);border:1px solid var(--line)"></i>Leave or holiday</span></div></section>
     <section id="v-reports" hidden aria-label="Reports" style="display:grid;gap:12px"></section>
     <section id="v-todo" hidden aria-label="To do and ta-da" style="display:grid;gap:12px">
       <p class="readonly-note" id="td-ro" hidden></p>
@@ -421,7 +422,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
       <label class="full">Notes<textarea id="e-notes" maxlength="1000"></textarea></label>
       <label>Project<input id="e-project" list="projects" maxlength="60"></label>
       <label>Where<select id="e-loc">
-        <optgroup label="Working"><option>Office</option><option>Home</option><option>Field work</option></optgroup>
+        <optgroup label="Working"><option>Office</option><option>Home</option><option>Field work</option></optgroup><optgroup label="Pause"><option>Break</option></optgroup>
         <optgroup label="Not working"><option>Annual leave</option><option>Sick leave</option><option>Public holiday</option><option>Unpaid leave</option></optgroup>
       </select></label>
       <label>Date<input type="date" id="e-date" required></label>

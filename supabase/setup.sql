@@ -31,7 +31,7 @@ create table if not exists public.entries (
   notes       text check (char_length(notes) <= 2000),
   project     text check (char_length(project) <= 80),
   location    text not null default 'Office'
-              check (location in ('Office','Home','Field work','Annual leave','Sick leave','Public holiday','Unpaid leave')),
+              check (location in ('Office','Home','Field work','Break','Annual leave','Sick leave','Public holiday','Unpaid leave')),
   start_time  text,
   end_time    text,
   hours       numeric(5,2) not null default 0 check (hours >= 0 and hours <= 24),
