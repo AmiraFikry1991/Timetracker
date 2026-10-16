@@ -373,7 +373,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0728"></script>
+<script src="config.js?v=20261016-0730"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -397,7 +397,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
       <label for="l-pw" class="hint">Your TaDay password</label>
       <input id="l-pw" type="password" autocomplete="current-password" placeholder="Password" style="letter-spacing:0;font-family:var(--f-body)">
       <button class="btn primary" type="button" id="l-pw-go">Sign in</button>
-      <span class="hint">No password yet? Sign in once with an email link or code, then choose <b>Set password</b> in the sidebar.</span>
+      <span class="hint">No password yet? Sign in once with an email link or code, then set one in <b>Settings</b>, under My account.</span>
     </div>
   </form>
 </div>
@@ -415,7 +415,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <small class="signedin" id="who-line"></small><button class="signout" id="setpw" type="button">Set password</button><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:28</small></div>
+    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:30</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -486,8 +486,18 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
         <div class="panel tada" id="tada-panel"><h3><span id="tada-head">Ta-da!</span> <span class="count" id="tada-count"></span></h3><p class="hint" id="tada-hint">Everything you've finished in the last 60 days. Tap one to move it back.</p><div id="tada-list"></div></div>
       </div>
     </section>
-    <section id="v-settings" hidden aria-label="Settings">
-      <form id="settings-form" style="display:grid;gap:12px" autocomplete="off">
+    <section id="v-settings" hidden aria-label="Settings" style="display:grid;gap:12px">
+      <form class="panel" id="acct-form" autocomplete="off">
+        <h3>My account</h3>
+        <p class="hint">Signed in as <b id="acct-email"></b>. Set a password to sign in on any device without waiting for an email.</p>
+        <div class="srow">
+          <label>New password <input type="password" id="ac-pw1" minlength="8" autocomplete="new-password" required></label>
+          <label>Type it again <input type="password" id="ac-pw2" minlength="8" autocomplete="new-password" required></label>
+          <button class="btn primary" type="submit" id="ac-save">Save password</button>
+        </div>
+        <p class="hint" id="ac-msg" role="status"></p>
+      </form>
+      <form id="settings-form" class="admin-only" style="display:grid;gap:12px" autocomplete="off">
         <p class="notice" id="s-err" hidden>Settings need a one-time database update before they can be saved. Run supabase/settings.sql in Supabase, then refresh.</p>
         <div class="panel"><h3>Work week</h3>
           <p class="hint">Days that are not ticked count as the weekend. They are shaded and labeled "Weekend" in every view.</p>
@@ -576,14 +586,14 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
         <li><b>iPhone:</b> open TaDay in Safari, tap Share, then <b>Add to Home Screen</b>.</li>
         <li><b>Android:</b> open TaDay in Chrome, tap &#8942;, then <b>Install app</b>.</li>
       </ul>
-      <p>Inside the phone app, sign in with your <b>password</b> (set one with <b>Set password</b> in the sidebar) or the <b>6-digit code</b> from the sign-in email, rather than the link.</p>
+      <p>Inside the phone app, sign in with your <b>password</b> (set one in <b>Settings</b>, under My account) or the <b>6-digit code</b> from the sign-in email, rather than the link.</p>
     </section>
 
     <section id="g-admin" class="g-admin"><h3>For admins</h3>
       <ul>
         <li><b>Team:</b> invite people by name and email (Member, Viewer or Admin), resend links, remove or restore access.</li>
         <li><b>Permissions:</b> for each person, choose where they can log time, which pages they see, and their official hours.</li>
-        <li><b>Settings:</b> working days, when the week starts, whether weekends show, and team defaults for new people.</li>
+        <li><b>Settings:</b> working days, when the week starts, whether weekends show, team defaults for new people, and <b>Set password</b> for anyone who has signed in.</li>
         <li><b>Showing:</b> at the bottom of the sidebar, switch between your time, everyone, or one person. Every view, report and to-do list follows it.</li>
       </ul>
     </section>
@@ -600,8 +610,8 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 </div>
 <div class="scrim" id="pwset" hidden>
   <form class="sheet" id="pwset-form" autocomplete="off" style="width:min(420px,100%)">
-    <h2>Set your password</h2>
-    <p class="hint">Then you can sign in with your email and password on any device, without waiting for an email.</p>
+    <h2 id="pw-title">Set a password</h2>
+    <p class="hint" id="pw-sub">They can then sign in with their email and this password. Share it with them privately; they can change it in Settings.</p>
     <label>New password<input type="password" id="pw1" minlength="8" autocomplete="new-password" required></label>
     <label>Type it again<input type="password" id="pw2" minlength="8" autocomplete="new-password" required></label>
     <p class="hint" id="pw-msg" role="status"></p>
@@ -654,6 +664,6 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0728"></script>
+<script src="app.js?v=20261016-0730"></script>
 </body>
 </html>

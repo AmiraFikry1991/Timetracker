@@ -239,7 +239,7 @@ function dayLabel(ds){const t=iso(new Date()),y=iso(addDays(new Date(),-1));cons
 function isDayMode(){return (state.tab==='tracker'&&state.tview==='day')||state.tab==='dayview';}
 function render(){
   document.querySelectorAll('.navbtn').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===state.tab?'page':'false'));
-  if((state.tab==='team'||state.tab==='settings')&&!state.isAdmin) state.tab='tracker';
+  if(state.tab==='team'&&!state.isAdmin) state.tab='tracker';
   ['tracker','calendar','month','reports','team','todo','settings'].forEach(t=>$('#v-'+t).hidden=(state.tab==='dayview'?'calendar':state.tab)!==t);
   const side=state.tab==='team'||state.tab==='todo'||state.tab==='settings';
   $('.toolbar').hidden=side;$('.foot2').hidden=side;
@@ -635,6 +635,9 @@ function greet(){const n=new Date(),h=n.getHours();const g=h<5?'Working late':h<
 greet();setInterval(greet,60000);
 /* ---------- settings (admins) ---------- */
 function renderSettings(){
+  $('#acct-email').textContent=state.email||'';
+  document.querySelectorAll('#v-settings .admin-only').forEach(x=>x.hidden=!state.isAdmin);
+  if(!state.isAdmin) return;
   const c=appCfg();
   $('#s-err').hidden=!state.appError;
   document.querySelectorAll('#s-days input').forEach(x=>x.checked=c.workDays.includes(+x.value));
@@ -644,7 +647,7 @@ function renderSettings(){
   const RL={admin:'Admin',viewer:'Viewer',member:'Member'};
   const people=state.profiles.filter(p=>p.active).sort((a,b)=>(a.full_name||a.email).localeCompare(b.full_name||b.email));
   $('#s-people').innerHTML=people.length?people.map(p=>{const pr=permsFor(p),role=p.is_admin?'admin':p.can_view_all?'viewer':'member',custom=p.settings&&Object.keys(p.settings).length;
-    return `<div class="person-row"><div><b>${esc(p.full_name||p.email)}${p.id===state.uid?' (you)':''}</b><span class="e">${esc(pr.locations.map(locLabel).join(', '))} · ${esc(pr.tabs.map(t=>TAB_LBL[t]).join(', ')||'Tracker only')}${custom?'':' · team defaults'}</span></div><span class="badge">${RL[role]}</span><span class="acts2"><button class="btn" type="button" data-perms="${esc(p.email)}">Edit</button></span></div>`;}).join(''):'<p class="hint">No one has signed in yet.</p>';
+    return `<div class="person-row"><div><b>${esc(p.full_name||p.email)}${p.id===state.uid?' (you)':''}</b><span class="e">${esc(pr.locations.map(locLabel).join(', '))} · ${esc(pr.tabs.map(t=>TAB_LBL[t]).join(', ')||'Tracker only')}${custom?'':' · team defaults'}</span></div><span class="badge">${RL[role]}</span><span class="acts2"><button class="btn" type="button" data-perms="${esc(p.email)}">Edit</button>${p.id===state.uid?'':`<button class="btn" type="button" data-setpw="${esc(p.email)}" data-name="${esc(p.full_name||p.email)}">Set password</button>`}</span></div>`;}).join(''):'<p class="hint">No one has signed in yet.</p>';
 }
 $('#settings-form').addEventListener('submit',async ev=>{
   ev.preventDefault();
@@ -692,18 +695,30 @@ $('#l-pw-go').onclick=async()=>{
   if(error) $('#login-msg').textContent=/invalid/i.test(error.message)?'That email and password do not match. If you have not set a password yet, sign in with an email link or code first.':'Could not sign in: '+error.message;
 };
 $('#l-pw').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#l-pw-go').click();}});
-$('#setpw').onclick=()=>{$('#pwset-form').reset();$('#pw-msg').textContent='';$('#pwset').hidden=false;$('#pw1').focus();};
+$('#acct-form').addEventListener('submit',async ev=>{
+  ev.preventDefault();const a=$('#ac-pw1').value,b=$('#ac-pw2').value;
+  if(a.length<8){$('#ac-msg').textContent='Use at least 8 characters.';return;}
+  if(a!==b){$('#ac-msg').textContent='The two passwords do not match.';return;}
+  $('#ac-save').disabled=true;$('#ac-msg').textContent='Saving...';
+  const{error}=await sb.auth.updateUser({password:a});
+  $('#ac-save').disabled=false;
+  if(error){$('#ac-msg').textContent='That did not save: '+error.message;return;}
+  $('#acct-form').reset();$('#ac-msg').textContent='Password saved. You can now sign in with your email and password on any device.';
+});
+let pwTarget=null;
 $('#pw-cancel').onclick=()=>{$('#pwset').hidden=true;};
 $('#pwset').addEventListener('click',e=>{if(e.target.id==='pwset') $('#pwset').hidden=true;});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-setpw]');if(!b) return;
+  pwTarget=b.dataset.setpw;$('#pw-title').textContent='Set a password for '+b.dataset.name;$('#pwset-form').reset();$('#pw-msg').textContent='';$('#pwset').hidden=false;$('#pw1').focus();});
 $('#pwset-form').addEventListener('submit',async ev=>{
   ev.preventDefault();const a=$('#pw1').value,b=$('#pw2').value;
   if(a.length<8){$('#pw-msg').textContent='Use at least 8 characters.';return;}
   if(a!==b){$('#pw-msg').textContent='The two passwords do not match.';return;}
   $('#pw-save').disabled=true;$('#pw-msg').textContent='Saving...';
-  const{error}=await sb.auth.updateUser({password:a});
+  const{error}=await sb.rpc('admin_set_password',{target_email:pwTarget,new_password:a});
   $('#pw-save').disabled=false;
-  if(error){$('#pw-msg').textContent='That did not save: '+error.message;return;}
-  $('#pwset').hidden=true;toast('Password saved. You can now sign in with your email and password.');
+  if(error){$('#pw-msg').textContent=/admin_set_password|function/i.test(error.message)&&!/signed in|admins/i.test(error.message)?'This needs a one-time database update first (supabase/update-all.sql).':error.message;return;}
+  $('#pwset').hidden=true;toast('Password set. Share it with them privately.');
 });
 $('#l-verify').onclick=async()=>{
   const email=$('#l-email').value.trim().toLowerCase(),token=$('#l-code').value.replace(/\s/g,'');if(!email||!token) return;
@@ -721,7 +736,7 @@ async function boot(session){
   const{data:me}=await sb.from('profiles').select('*').eq('id',state.uid).maybeSingle();
   if(!me||!me.active){booted=false;await sb.auth.signOut();showLogin('Your access to TaDay is not active. Ask your admin to invite you again.');return;}
   state.isAdmin=!!me.is_admin;
-  await loadApp();applyPerms(permsFor(me));$('#nav-settings').hidden=!me.is_admin;state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
+  await loadApp();applyPerms(permsFor(me));$('#nav-settings').hidden=false;state.email=me.email;state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
   $('#who-line').textContent=me.full_name||me.email;$('#nav-team').hidden=!state.isAdmin;
   $('#login').hidden=true;$('#app').hidden=false;greet();
   const t=await sb.from('timers').select('*').eq('user_id',state.uid).maybeSingle();state.timer=timerFromRow(t.data);
