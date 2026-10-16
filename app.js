@@ -23,10 +23,18 @@ const ALL_TABS=['dayview','calendar','month','todo','reports'];
 const TAB_LBL={dayview:'Day',calendar:'Week',month:'Month',todo:'To Do',reports:'Reports'};
 const OWNER_EMAILS=['amira.fikry.mahmoud@gmail.com'];
 const OWNER_USUAL=[{loc:'Office',start:'11:00',end:'18:00'},{loc:'Home',start:'23:00',end:'00:00'}];
+const DAYS_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const APP_DEFAULT={workDays:[0,1,2,3,4],weekStart:0,showWeekends:true,defaults:{locations:['Office','Break'],tabs:['dayview','calendar','month','todo','reports']}};
+function appCfg(){const a=state.app||{};const d=a.defaults||{};return {workDays:Array.isArray(a.workDays)&&a.workDays.length?a.workDays:APP_DEFAULT.workDays,weekStart:Number.isInteger(a.weekStart)?a.weekStart:APP_DEFAULT.weekStart,showWeekends:typeof a.showWeekends==='boolean'?a.showWeekends:APP_DEFAULT.showWeekends,defaults:{locations:Array.isArray(d.locations)?d.locations:APP_DEFAULT.defaults.locations,tabs:Array.isArray(d.tabs)?d.tabs:APP_DEFAULT.defaults.tabs}};}
+const isWeekendDate=d=>!appCfg().workDays.includes(d.getDay());
+function weekStartOf(a){const ws=appCfg().weekStart;return addDays(a,-((a.getDay()-ws+7)%7));}
+function weekDays(start){const c=appCfg();const out=[];for(let i=0;i<7;i++){const d=addDays(start,i);if(c.showWeekends||c.workDays.includes(d.getDay())) out.push(d);}return out;}
+const WKND_CHIP='<span class="wknd">Weekend</span>';
+async function loadApp(){if(!sb) return;const{data,error}=await sb.from('app_settings').select('data').eq('id',1).maybeSingle();state.appError=!!error;state.app=(data&&data.data)||{};}
 function permsFor(row){
   const s=(row&&row.settings)||{},email=((row&&row.email)||'').toLowerCase(),owner=OWNER_EMAILS.includes(email);
-  return {locations:Array.isArray(s.locations)?s.locations:(owner?ALL_LOCS.slice():['Office','Break']),
-          tabs:Array.isArray(s.tabs)?s.tabs:ALL_TABS.slice(),
+  return {locations:Array.isArray(s.locations)?s.locations:(owner?ALL_LOCS.slice():appCfg().defaults.locations),
+          tabs:Array.isArray(s.tabs)?s.tabs:(owner?ALL_TABS.slice():appCfg().defaults.tabs),
           usual:Array.isArray(s.usual)?s.usual:(owner?OWNER_USUAL:[])};
 }
 const toMin=t=>{const[a,b]=t.split(':').map(Number);return a*60+b;};
@@ -54,7 +62,7 @@ function range(){
   const a=new Date(state.anchor.getFullYear(),state.anchor.getMonth(),state.anchor.getDate());
   if(state.tab==='month'||(state.tab==='reports'&&state.rperiod==='month')) return [new Date(a.getFullYear(),a.getMonth(),1),new Date(a.getFullYear(),a.getMonth()+1,0)];
   if(isDayMode()) return [a,a];
-  const s=addDays(a,-a.getDay());return [s,addDays(s,state.wkDays-1)];
+  const s=weekStartOf(a);return [s,addDays(s,6)];
 }
 const inRange=(l,[s,e])=>{const a=iso(s),b=iso(e);return l.filter(x=>x.date>=a&&x.date<=b)};
 const nameOf=id=>id===state.uid?'You':(state.names[id]||'Teammate');
@@ -75,7 +83,7 @@ async function fetchMonth(mk){
   finally{state.loading.delete(mk);}
 }
 async function ensureLoaded(){
-  if(!sb||!state.uid||state.tab==='team'||state.tab==='todo') return;
+  if(!sb||!state.uid||state.tab==='team'||state.tab==='todo'||state.tab==='settings') return;
   const need=monthsIn(range()).filter(mk=>!state.loaded.has(mk)&&!state.loading.has(mk));
   if(!need.length) return;
   await Promise.all(need.map(fetchMonth));render();
@@ -207,11 +215,12 @@ function dayLabel(ds){const t=iso(new Date()),y=iso(addDays(new Date(),-1));cons
 function isDayMode(){return (state.tab==='tracker'&&state.tview==='day')||state.tab==='dayview';}
 function render(){
   document.querySelectorAll('.navbtn').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===state.tab?'page':'false'));
-  if(state.tab==='team'&&!state.isAdmin) state.tab='tracker';
-  ['tracker','calendar','month','reports','team','todo'].forEach(t=>$('#v-'+t).hidden=(state.tab==='dayview'?'calendar':state.tab)!==t);
-  const side=state.tab==='team'||state.tab==='todo';
+  if((state.tab==='team'||state.tab==='settings')&&!state.isAdmin) state.tab='tracker';
+  ['tracker','calendar','month','reports','team','todo','settings'].forEach(t=>$('#v-'+t).hidden=(state.tab==='dayview'?'calendar':state.tab)!==t);
+  const side=state.tab==='team'||state.tab==='todo'||state.tab==='settings';
   $('.toolbar').hidden=side;$('.foot2').hidden=side;
   if(state.tab==='team'){renderTeam();return;}
+  if(state.tab==='settings'){renderSettings();return;}
   if(state.tab==='todo'){renderTodo();return;}
   ensureLoaded();
   $('#rperiod').hidden=state.tab!=='reports';
@@ -219,8 +228,8 @@ function render(){
   document.querySelectorAll('#tview button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tv===state.tview)));
   if(isDayMode()&&document.activeElement!==$('#t-date')) $('#t-date').value=iso(range()[0]);
   const r=range(),list=inRange(visible(),r),showWho=state.person==='all';
-  const tw=iso(addDays(new Date(),-new Date().getDay()));
-  $('#plabel').textContent=(isDayMode())?dayLabel(iso(r[0])):(state.tab==='month'||(state.tab==='reports'&&state.rperiod==='month'))?(MN[r[0].getMonth()]+' '+r[0].getFullYear()):(iso(r[0])===tw?'This week':MN[r[0].getMonth()]+' '+r[0].getDate()+' to '+MN[r[1].getMonth()]+' '+r[1].getDate());
+  const tw=iso(weekStartOf(new Date()));
+  const wkLast=weekDays(r[0]).slice(-1)[0]||r[1];$('#plabel').textContent=(isDayMode())?dayLabel(iso(r[0])):(state.tab==='month'||(state.tab==='reports'&&state.rperiod==='month'))?(MN[r[0].getMonth()]+' '+r[0].getFullYear()):(iso(r[0])===tw?'This week':MN[r[0].getMonth()]+' '+r[0].getDate()+' to '+MN[wkLast.getMonth()]+' '+wkLast.getDate());
   $('#ptotal').textContent=dur(list.reduce((t,e)=>t+workH(e),0));
   $('#projects').innerHTML=[...new Set(allEntries().map(e=>e.project).filter(Boolean))].sort().map(p=>`<option value="${esc(p)}"></option>`).join('');
   if(state.tab==='tracker') renderTracker(list,showWho,r);
@@ -236,7 +245,7 @@ function renderTracker(list,showWho){
   $('#v-tracker').innerHTML=days.map(ds=>{
     const es=by[ds].slice().sort((a,b)=>(b.start||'')<(a.start||'')?-1:(b.start||'')>(a.start||'')?1:0);
     const tot=es.reduce((t,e)=>t+workH(e),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
-    return `<div class="daygrp${lv?' leave':''}"><div class="dayhead"><span class="d">${dayLabel(ds)}</span><span class="t">${lv&&!tot?'Day off':'Total'}<b>${lv&&!tot?'':dur(tot)}</b></span></div>`+
+    return `<div class="daygrp${lv?' leave':''}"><div class="dayhead${isWeekendDate(parse(ds))?' wk':''}"><span class="d">${dayLabel(ds)}${isWeekendDate(parse(ds))?WKND_CHIP:''}</span><span class="t">${lv&&!tot?'Day off':'Total'}<b>${lv&&!tot?'':dur(tot)}</b></span></div>`+
       es.map(e=>{const mine=e.uid===state.uid,lvE=isLeave(e.location);
         return `<div class="row"><div class="desc"><b>${esc(e.task)}</b>${e.notes?`<span>${esc(e.notes)}</span>`:''}</div>
         <div class="tags">${projTag(e.project)}${locTag(e.location)}${showWho?`<span class="who">${esc(nameOf(e.uid))}</span>`:''}</div>
@@ -246,17 +255,17 @@ function renderTracker(list,showWho){
   }).join('');
 }
 function renderCal(list,showWho,r){
-  const n=state.tab==='dayview'?1:state.wkDays;const PX=state.tab==='dayview'?56:40;
+  const days=state.tab==='dayview'?[r[0]]:weekDays(r[0]);const n=days.length;const PX=state.tab==='dayview'?56:40;
   const timed=list.filter(e=>e.start&&e.end&&!isLeave(e.location));
   let lo=9,hi=24;timed.forEach(e=>{const s=+e.start.slice(0,2);lo=Math.min(lo,s);});lo=Math.max(0,lo);
   const H=(hi-lo)*PX;const t=iso(new Date());
   let h=`<div class="hcell" style="border-left:0"></div>`;
-  for(let i=0;i<n;i++){const d=addDays(r[0],i),ds=iso(d);const tot=list.filter(e=>e.date===ds).reduce((a,e)=>a+workH(e),0);
-    h+=`<div class="hcell${ds===t?' today':''}">${DN[d.getDay()]} ${d.getDate()}<b>${dur(tot)}</b></div>`;}
+  for(let i=0;i<n;i++){const d=days[i],ds=iso(d);const wk=isWeekendDate(d);const tot=list.filter(e=>e.date===ds).reduce((a,e)=>a+workH(e),0);
+    h+=`<div class="hcell${ds===t?' today':''}${wk?' wk':''}">${wk?WKND_CHIP:''}${DN[d.getDay()]} ${d.getDate()}<b>${dur(tot)}</b></div>`;}
   let g=`<div class="gutter" style="height:${H}px">`;for(let x=lo;x<=hi;x++) g+=`<span style="top:${(x-lo)*PX}px">${pad(x%24)}:00</span>`;g+='</div>';
   let cols='';
-  for(let i=0;i<n;i++){const d=addDays(r[0],i),ds=iso(d);const es=list.filter(e=>e.date===ds);const lv=!showWho&&es.some(e=>isLeave(e.location));
-    let c=`<div class="col${lv?' leave':''}" data-day="${ds}" style="height:${H}px">`;
+  for(let i=0;i<n;i++){const d=days[i],ds=iso(d);const es=list.filter(e=>e.date===ds);const lv=!showWho&&es.some(e=>isLeave(e.location));
+    let c=`<div class="col${lv?' leave':''}${isWeekendDate(d)?' wk':''}" data-day="${ds}" style="height:${H}px">`;
     for(let x=1;x<hi-lo;x++) c+=`<div class="line" style="top:${x*PX}px"></div>`;
     es.forEach(e=>{
       if(isLeave(e.location)){c+=`<div class="blk leave">${esc(e.location)}</div>`;return;}
@@ -270,12 +279,13 @@ function renderCal(list,showWho,r){
   const cal=$('#cal');cal.style.gridTemplateColumns=`52px repeat(${n},minmax(0,1fr))`;cal.style.minWidth=n===1?'0':'';cal.innerHTML=h+g+cols;
 }
 function renderMonth(list,showWho,r){
-  const n=state.wkDays,g=$('#mgrid');g.style.setProperty('--cols',n);
+  const g=$('#mgrid');const cols=weekDays(weekStartOf(r[0])).map(d=>d.getDay());const n=cols.length;g.style.setProperty('--cols',n);
   const t=iso(new Date()),mon=r[0].getMonth();
-  let h='';for(let i=0;i<n;i++) h+=`<div class="mh">${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][i]}</div>`;
-  for(let w=addDays(r[0],-r[0].getDay());w<=r[1];w=addDays(w,7)){
+  let h='';for(let i=0;i<n;i++){const wk=!appCfg().workDays.includes(cols[i]);h+=`<div class="mh${wk?' wk':''}">${DAYS_FULL[cols[i]]}${wk?WKND_CHIP:''}</div>`;}
+  for(let w=weekStartOf(r[0]);w<=r[1];w=addDays(w,7)){
+    const wdays=weekDays(w);
     for(let i=0;i<n;i++){
-      const d=addDays(w,i),ds=iso(d);
+      const d=wdays[i],ds=iso(d);
       if(d.getMonth()!==mon){h+=`<div class="mc out" aria-hidden="true"><div class="top"><span class="n">${d.getDate()}</span></div></div>`;continue;}
       const es=list.filter(e=>e.date===ds).sort((a,b)=>(a.start||'99')<(b.start||'99')?-1:1);
       const tot=es.reduce((a,e)=>a+workH(e),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
@@ -283,7 +293,7 @@ function renderMonth(list,showWho,r){
         if(isLeave(e.location)) return `<span class="mt lv" title="${esc(e.notes||'')}">${esc(e.location)}</span>`;
         const mine=e.uid===state.uid;const tip=[e.task,e.start&&e.end?e.start+' to '+e.end:'',e.project,e.notes].filter(Boolean).join(' | ');
         return `<button type="button" class="mt${mine?'':' who'}" style="--lc:${LOCVAR[e.location]||'var(--office)'}" ${mine?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(tip)}">${esc(e.task)}<small>${dur(e.hours)}${showWho?' · '+esc(nameOf(e.uid)):''}</small></button>`;}).join('');
-      h+=`<div class="mc${ds===t?' today':''}${lv?' leave':''}${es.length?'':' empty-m'}" data-mday="${ds}"><div class="top"><span class="n">${d.getDate()}</span><span class="wd">${DN[d.getDay()]}</span><span class="h">${tot?dur(tot):''}</span></div>${items}</div>`;
+      h+=`<div class="mc${ds===t?' today':''}${isWeekendDate(d)?' wk':''}${lv?' leave':''}${es.length?'':' empty-m'}" data-mday="${ds}"><div class="top"><span class="n">${d.getDate()}</span><span class="wd">${DN[d.getDay()]}${isWeekendDate(d)?' · Weekend':''}</span><span class="h">${tot?dur(tot):''}</span></div>${items}</div>`;
     }
   }
   g.innerHTML=h;
@@ -433,7 +443,7 @@ function renderReports(list,r){
   const brk=list.filter(e=>isBreak(e.location)).reduce((a,e)=>a+(+e.hours||0),0);
   const tot=work.reduce((a,e)=>a+workH(e),0);
   const sum=l=>work.filter(e=>e.location===l).reduce((a,e)=>a+workH(e),0);
-  const days=[];for(let d=new Date(r[0]);d<=r[1];d=addDays(d,1)){if(state.rperiod==='week'||d.getDay()<5||state.wkDays===7) days.push(iso(d));}
+  const days=[];for(let d=new Date(r[0]);d<=r[1];d=addDays(d,1)){if(appCfg().showWeekends||!isWeekendDate(d)) days.push(iso(d));}
   const leaveDays={};list.filter(e=>isLeave(e.location)).forEach(e=>{(leaveDays[e.location]=leaveDays[e.location]||new Set()).add(e.uid+e.date)});
   const perDay=days.map(ds=>{const o={ds};['Office','Home','Field work'].forEach(l=>o[l]=work.filter(e=>e.date===ds&&e.location===l).reduce((a,e)=>a+workH(e),0));o.t=o.Office+o.Home+o['Field work'];return o;});
   const mx=Math.max(8,...perDay.map(o=>o.t));
@@ -506,7 +516,7 @@ function shift(n){const a=state.anchor;if(isDayMode()){state.anchor=addDays(a,n)
 $('#prev').onclick=()=>shift(-1);$('#next').onclick=()=>shift(1);$('#today').onclick=()=>{state.anchor=new Date();render();};
 $('#rperiod').onchange=e=>{state.rperiod=e.target.value;render();};
 $('#person').onchange=e=>{state.person=e.target.value;store.set('tt.person',state.person);render();if(state.tab==='todo') loadTodos();};
-$('#wkdays').value=String(state.wkDays);$('#wkdays').onchange=e=>{state.wkDays=Number(e.target.value);store.set('tt.wkdays',String(state.wkDays));render();};
+
 $('#usual').onclick=async()=>{
   if(!guard()) return;const date=(isDayMode())?iso(state.anchor):(state.manual&&$('#t-date').value?$('#t-date').value:iso(new Date()));
   const mine=allEntries().filter(x=>x.uid===state.uid&&x.date===date);
@@ -528,6 +538,34 @@ function greet(){const n=new Date(),h=n.getHours();const g=h<5?'Working late':h<
   $('#greet').innerHTML=g+', <em>'+esc(state.vname||'there')+'</em>';
   $('#today-line').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+n.getDate()+' '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getFullYear();}
 greet();setInterval(greet,60000);
+/* ---------- settings (admins) ---------- */
+function renderSettings(){
+  const c=appCfg();
+  $('#s-err').hidden=!state.appError;
+  document.querySelectorAll('#s-days input').forEach(x=>x.checked=c.workDays.includes(+x.value));
+  $('#s-start').value=String(c.weekStart);$('#s-wknd').checked=c.showWeekends;
+  document.querySelectorAll('#s-locs input').forEach(x=>x.checked=c.defaults.locations.includes(x.value));
+  document.querySelectorAll('#s-tabs input').forEach(x=>x.checked=c.defaults.tabs.includes(x.value));
+  const RL={admin:'Admin',viewer:'Viewer',member:'Member'};
+  const people=state.profiles.filter(p=>p.active).sort((a,b)=>(a.full_name||a.email).localeCompare(b.full_name||b.email));
+  $('#s-people').innerHTML=people.length?people.map(p=>{const pr=permsFor(p),role=p.is_admin?'admin':p.can_view_all?'viewer':'member',custom=p.settings&&Object.keys(p.settings).length;
+    return `<div class="person-row"><div><b>${esc(p.full_name||p.email)}${p.id===state.uid?' (you)':''}</b><span class="e">${esc(pr.locations.map(locLabel).join(', '))} · ${esc(pr.tabs.map(t=>TAB_LBL[t]).join(', ')||'Tracker only')}${custom?'':' · team defaults'}</span></div><span class="badge">${RL[role]}</span><span class="acts2"><button class="btn" type="button" data-perms="${esc(p.email)}">Edit</button></span></div>`;}).join(''):'<p class="hint">No one has signed in yet.</p>';
+}
+$('#settings-form').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  const workDays=[...document.querySelectorAll('#s-days input:checked')].map(x=>+x.value);
+  if(!workDays.length){$('#s-msg').textContent='Pick at least one working day.';return;}
+  const locations=[...document.querySelectorAll('#s-locs input:checked')].map(x=>x.value);
+  if(!locations.length){$('#s-msg').textContent='Pick at least one default place to log time.';return;}
+  const tabs=[...document.querySelectorAll('#s-tabs input:checked')].map(x=>x.value);
+  const data={workDays,weekStart:+$('#s-start').value,showWeekends:$('#s-wknd').checked,defaults:{locations,tabs}};
+  $('#s-save').disabled=true;$('#s-msg').textContent='Saving...';
+  const{error}=await sb.from('app_settings').upsert({id:1,data,updated_at:new Date().toISOString()});
+  $('#s-save').disabled=false;
+  if(error){$('#s-msg').textContent=/app_settings/.test(error.message)?'Settings need a one-time database update first (supabase/settings.sql).':'That did not save: '+error.message;return;}
+  state.app=data;state.appError=false;$('#s-msg').textContent='Saved. Everyone sees the new work week next time they open or refresh TaDay.';
+  applyPerms(state.perms?permsFor((state.profiles.find(p=>p.id===state.uid))||{}):permsFor({}));renderSettings();
+});
 /* ---------- permissions (apply to me) ---------- */
 function applyPerms(p){
   state.perms=p;
@@ -564,7 +602,7 @@ async function boot(session){
   const{data:me}=await sb.from('profiles').select('*').eq('id',state.uid).maybeSingle();
   if(!me||!me.active){booted=false;await sb.auth.signOut();showLogin('Your access to TaDay is not active. Ask your admin to invite you again.');return;}
   state.isAdmin=!!me.is_admin;
-  applyPerms(permsFor(me));state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
+  await loadApp();applyPerms(permsFor(me));$('#nav-settings').hidden=!me.is_admin;state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
   $('#who-line').textContent=me.full_name||me.email;$('#nav-team').hidden=!state.isAdmin;
   $('#login').hidden=true;$('#app').hidden=false;greet();
   const t=await sb.from('timers').select('*').eq('user_id',state.uid).maybeSingle();state.timer=timerFromRow(t.data);

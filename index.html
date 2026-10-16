@@ -29,7 +29,7 @@ html,body{margin:0;height:100%}
   --accent:#4F82C0; --accent-ink:#FFFFFF; --accent-soft:#E5EFFA; --stop:#D9667A;
   --gold:#3D5F8F; --gold-soft:#EAF1FA; --f-script:"Pinyon Script","Snell Roundhand","Apple Chancery",cursive;
   --rail:#EAF3FC; --rail-ink:#2E3A4E; --rail-muted:#6A819F; --rail-hover:#DAE8F7;
-  --office:#D3E5F7; --home:#FBE1DB; --field:#DFF2E5; --break:#FFF1C7; --leave-bg:#F5F4F7; --leave-ink:#8E889C; --on-pastel:#2E3A4E; color-scheme:light;
+  --office:#D3E5F7; --home:#FBE1DB; --field:#DFF2E5; --break:#FFF1C7; --weekend:#F5F1FB; --weekend-chip:#E9E0F7; --leave-bg:#F5F4F7; --leave-ink:#8E889C; --on-pastel:#2E3A4E; color-scheme:light;
   --f-display:"DM Serif Display",Georgia,"Times New Roman",serif;
   --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -202,6 +202,17 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .sheet .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sheet label{display:grid;gap:4px;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:0}
 .sheet input,.sheet select,.sheet textarea{font-weight:500;font-size:.95rem;text-transform:none;letter-spacing:0;color:var(--ink)}
+.wknd{display:inline-block;margin-left:6px;font-family:var(--f-body);font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7A5BA8;background:var(--weekend-chip);border-radius:99px;padding:1px 7px;vertical-align:2px}
+.hcell .wknd{display:table;margin:0 auto 3px}
+.hcell.wk,.mh.wk{background:var(--weekend)}
+.cal .col.wk{background:var(--weekend)}
+.mc.wk{background:var(--weekend)}
+.mc.wk:hover{background:var(--weekend)}
+.dayhead.wk{background:var(--weekend)}
+.srow{display:flex;gap:10px 22px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.srow label{display:flex;align-items:center;gap:8px;font-weight:600;font-size:.92rem}
+.srow.end{justify-content:flex-end}
+.panel .pset{margin-top:10px}
 .pset{border:1px solid var(--line);border-radius:12px;padding:10px 14px 12px;margin:0;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
 .pset legend{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:0 4px}
 .pset label{display:flex;align-items:center;gap:6px;font-weight:600;font-size:.92rem;text-transform:none;letter-spacing:0;color:var(--ink)}
@@ -324,7 +335,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0646"></script>
+<script src="config.js?v=20261016-0652"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -354,11 +365,12 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <button class="navbtn" data-tab="month" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M9 9v12M15 9v12M3 15h18"/></svg>Month</button>
     <button class="navbtn" data-tab="todo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="5" height="5" rx="1.2"/><path d="M4.2 16.5l1.6 1.6 3-3.2M12 6.5h9M12 12h9M12 17.5h9"/></svg>To Do</button>
     <button class="navbtn" data-tab="reports" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
+    <button class="navbtn" data-tab="settings" type="button" id="nav-settings" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
     <button class="navbtn" data-tab="team" type="button" id="nav-team" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.8c1.7.8 2.7 2.5 3 5.2"/></svg>Team</button>
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 06:46</small></div>
+    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 06:52</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -429,6 +441,24 @@ td.r{text-align:right;font-family:var(--f-mono)}
         <div class="panel tada" id="tada-panel"><h3><span id="tada-head">Ta-da!</span> <span class="count" id="tada-count"></span></h3><p class="hint" id="tada-hint">Everything you've finished in the last 60 days. Tap one to move it back.</p><div id="tada-list"></div></div>
       </div>
     </section>
+    <section id="v-settings" hidden aria-label="Settings">
+      <form id="settings-form" style="display:grid;gap:12px" autocomplete="off">
+        <p class="notice" id="s-err" hidden>Settings need a one-time database update before they can be saved. Run supabase/settings.sql in Supabase, then refresh.</p>
+        <div class="panel"><h3>Work week</h3>
+          <p class="hint">Days that are not ticked count as the weekend. They are shaded and labeled "Weekend" in every view.</p>
+          <fieldset class="pset" id="s-days"><legend>Working days</legend><label><input type="checkbox" value="0"> Sunday</label><label><input type="checkbox" value="1"> Monday</label><label><input type="checkbox" value="2"> Tuesday</label><label><input type="checkbox" value="3"> Wednesday</label><label><input type="checkbox" value="4"> Thursday</label><label><input type="checkbox" value="5"> Friday</label><label><input type="checkbox" value="6"> Saturday</label></fieldset>
+          <div class="srow"><label>Week starts on <select id="s-start"><option value="0">Sunday</option><option value="1">Monday</option><option value="6">Saturday</option></select></label>
+          <label class="chk2"><input type="checkbox" id="s-wknd"> Show weekend days in the Week, Month and Reports views</label></div>
+        </div>
+        <div class="panel"><h3>What people can see (team defaults)</h3>
+          <p class="hint">These apply to everyone without their own permissions. To set someone individually, use Edit below.</p>
+          <fieldset class="pset" id="s-locs"><legend>Where they can log time</legend><label><input type="checkbox" value="Office"> Office</label><label><input type="checkbox" value="Home"> WFH</label><label><input type="checkbox" value="Field work"> Field work</label><label><input type="checkbox" value="Break"> Break</label><span class="hint">Leave and public holidays are always available.</span></fieldset>
+          <fieldset class="pset" id="s-tabs"><legend>Pages they can see</legend><label><input type="checkbox" value="dayview"> Day</label><label><input type="checkbox" value="calendar"> Week</label><label><input type="checkbox" value="month"> Month</label><label><input type="checkbox" value="todo"> To Do</label><label><input type="checkbox" value="reports"> Reports</label><span class="hint">Tracker is always visible.</span></fieldset>
+        </div>
+        <div class="srow end"><span class="hint" id="s-msg" role="status"></span><button class="btn primary" type="submit" id="s-save">Save settings</button></div>
+        <div class="panel"><h3>People's access</h3><div id="s-people"></div></div>
+      </form>
+    </section>
     <section id="v-team" hidden aria-label="Team" style="display:grid;gap:12px">
       <form class="panel invite" id="invite" autocomplete="off">
         <h3>Invite someone</h3>
@@ -445,7 +475,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     </section>
 
     <div class="foot2">
-      <span>Week shows <select id="wkdays" aria-label="Days in week"><option value="5">Sunday to Thursday</option><option value="7">Sunday to Saturday</option></select></span>
+      <span></span>
       <button class="btn" id="export" type="button">Export CSV</button>
     </div>
   </main>
@@ -497,6 +527,6 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0646"></script>
+<script src="app.js?v=20261016-0652"></script>
 </body>
 </html>
