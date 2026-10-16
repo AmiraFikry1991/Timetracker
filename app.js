@@ -487,8 +487,16 @@ $('#login-form').addEventListener('submit',async ev=>{
   $('#l-go').disabled=true;$('#login-msg').textContent='Sending...';
   const{error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});
   $('#l-go').disabled=false;
-  $('#login-msg').textContent=error?(/invite|database error/i.test(error.message)?'This email has not been invited yet. Ask Amira to invite you.':'Could not send the link: '+error.message):'Check your inbox for a sign-in link from Supabase. You can close this tab.';
+  if(!error){$('#codebox').hidden=false;}
+  $('#login-msg').textContent=error?(/invite|database error/i.test(error.message)?'This email has not been invited yet. Ask Amira to invite you.':'Could not send the link: '+error.message):'Check your inbox. Tap the link in the email, or type the code from it below. (On a phone app, use the code.)';
 });
+$('#l-verify').onclick=async()=>{
+  const email=$('#l-email').value.trim().toLowerCase(),token=$('#l-code').value.replace(/\s/g,'');if(!email||!token) return;
+  $('#l-verify').disabled=true;$('#login-msg').textContent='Checking...';
+  const{error}=await sb.auth.verifyOtp({email,token,type:'email'});
+  $('#l-verify').disabled=false;
+  if(error) $('#login-msg').textContent='That code did not work. Check it, or request a new email.';
+};
 $('#signout').onclick=async()=>{await sb.auth.signOut();location.reload();};
 
 let booted=false;
