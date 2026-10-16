@@ -217,6 +217,30 @@ begin
 end;
 $$;
 
+-- Enforce allowed locations.
+create or replace function public.location_allowed(loc text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select case
+    when loc in ('Annual leave','Sick leave','Public holiday','Unpaid leave') then true
+    else coalesce((
+      select case
+        when p.settings ? 'locations' then (p.settings->'locations') ? loc
+        else loc in ('Office','Break') or p.is_admin
+      end
+      from public.profiles p where p.id = auth.uid()
+    ), false)
+  end;
+$$;
+
+drop policy if exists "add own entries" on public.entries;
+create policy "add own entries" on public.entries
+  for insert with check (user_id = auth.uid() and public.is_active() and public.location_allowed(location));
+
+drop policy if exists "change own entries" on public.entries;
+create policy "change own entries" on public.entries
+  for update using (user_id = auth.uid() and public.is_active())
+  with check (user_id = auth.uid() and public.location_allowed(location));
+
 -- You, as the admin. Change the email here if you want to sign in with a different one.
 insert into public.allowed_emails (email, full_name, is_admin)
 values ('amira.fikry.mahmoud@gmail.com', 'Amira Fikry', true)
