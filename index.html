@@ -29,7 +29,7 @@ html,body{margin:0;height:100%}
   --accent:#4F82C0; --accent-ink:#FFFFFF; --accent-soft:#E5EFFA; --stop:#D9667A;
   --gold:#3D5F8F; --gold-soft:#EAF1FA; --f-script:"Pinyon Script","Snell Roundhand","Apple Chancery",cursive;
   --rail:#EAF3FC; --rail-ink:#2E3A4E; --rail-muted:#6A819F; --rail-hover:#DAE8F7;
-  --office:#E4EFFB; --home:#EEE8FB; --field:#E7F6ED; --break:#F6EFE3; --weekend:#F0F3F6; --weekend-chip:#DFE6EE; --leave-bg:#F5F4F7; --leave-ink:#8E889C; --on-pastel:#2E3A4E; color-scheme:light;
+  --office:#E4EFFB; --home:#F5F2FC; --field:#E7F6ED; --break:#F6EFE3; --weekend:#F0F3F6; --weekend-chip:#DFE6EE; --leave-bg:#F5F4F7; --leave-ink:#8E889C; --on-pastel:#2E3A4E; color-scheme:light;
   --f-display:"DM Serif Display",Georgia,"Times New Roman",serif;
   --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -381,7 +381,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0740"></script>
+<script src="config.js?v=20261016-0742"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -423,7 +423,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:40</small></div>
+    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:42</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -673,6 +673,6 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0740"></script>
+<script src="app.js?v=20261016-0742"></script>
 </body>
 </html>
