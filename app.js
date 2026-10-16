@@ -677,9 +677,9 @@ $('#login-form').addEventListener('submit',async ev=>{
   ev.preventDefault();if(!sb) return;const email=$('#l-email').value.trim().toLowerCase();if(!email) return;
   $('#l-go').disabled=true;$('#login-msg').textContent='Sending...';
   const{error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});
-  $('#l-go').disabled=false;
+  $('#l-go').disabled=false;$('#codebox').hidden=false;
   if(!error){$('#codebox').hidden=false;}
-  $('#login-msg').textContent=error?(/invite|database error/i.test(error.message)?'This email has not been invited yet. Ask your admin to invite you.':'Could not send the link: '+error.message):'Check your inbox. Tap the link in the email, or type the code from it below. (On a phone app, use the code.)';
+  $('#login-msg').textContent=error?(/invite|database error/i.test(error.message)?'This email has not been invited yet. Ask your admin to invite you.':(/rate limit/i.test(error.message)?'Too many sign-in emails were sent in the last hour. Wait a little and try again, or use the 6-digit code from an email you already received (it works for about an hour).':'Could not send the link: '+error.message)):'Check your inbox. Tap the link in the email, or type the code from it below. (On a phone app, use the code.)';
 });
 $('#l-verify').onclick=async()=>{
   const email=$('#l-email').value.trim().toLowerCase(),token=$('#l-code').value.replace(/\s/g,'');if(!email||!token) return;
