@@ -29,6 +29,18 @@ function appCfg(){const a=state.app||{};const d=a.defaults||{};return {workDays:
 const isWeekendDate=d=>!appCfg().workDays.includes(d.getDay());
 function weekStartOf(a){const ws=appCfg().weekStart;return addDays(a,-((a.getDay()-ws+7)%7));}
 function weekDays(start){const c=appCfg();const out=[];for(let i=0;i<7;i++){const d=addDays(start,i);if(c.showWeekends||c.workDays.includes(d.getDay())) out.push(d);}return out;}
+function subjectUid(){return state.person==='all'?null:state.person==='me'?state.uid:state.person;}
+function schedBlocks(uid){if(!uid) return [];if(uid===state.uid) return (state.perms&&state.perms.usual)||[];const p=state.profiles.find(x=>x.id===uid);return p?permsFor(p).usual:[];}
+function daySched(uid,ds,es){const d=parse(ds);if(!uid||isWeekendDate(d)||es.some(e=>e.uid===uid&&isLeave(e.location))) return 0;return schedBlocks(uid).reduce((a,b)=>a+(exactH(b.start,b.end)||0),0);}
+function diffChip(worked,sched){if(!sched) return '';const d=worked-sched,m=Math.round(Math.abs(d)*60);if(m<1) return '<span class="dchip ok">On target</span>';return `<span class="dchip ${d>0?'over':'under'}">${d>0?'+':'-'}${dur(m/60)}</span>`;}
+function schedLine(uid,ds,es){
+  const bl=schedBlocks(uid),s=daySched(uid,ds,es);if(!s) return '';
+  const w=es.filter(e=>e.uid===uid).reduce((a,e)=>a+workH(e),0);
+  const timed=es.filter(e=>e.uid===uid&&!isLeave(e.location)&&!isBreak(e.location)&&e.start).map(e=>e.start).sort();
+  const first=timed[0],o=bl[0]&&bl[0].start;let late='';
+  if(first&&o){const dm=toMin(first)-toMin(o);if(dm>=5) late=` · started ${dur(dm/60)} late`;else if(dm<=-5) late=` · started ${dur(-dm/60)} early`;}
+  return `<div class="sched-line"><span>Official ${bl.map(b=>esc(b.start)+' to '+esc(b.end)).join(', ')}</span><span>Scheduled <b>${dur(s)}</b></span><span>Worked <b>${dur(w)}</b></span>${diffChip(w,s)}<span class="late">${late.replace(/^ · /,'')}</span></div>`;
+}
 const WKND_CHIP='<span class="wknd">Weekend</span>';
 async function loadApp(){if(!sb) return;const{data,error}=await sb.from('app_settings').select('data').eq('id',1).maybeSingle();state.appError=!!error;state.app=(data&&data.data)||{};}
 function permsFor(row){
@@ -240,12 +252,12 @@ function render(){
 function renderTracker(list,showWho){
   const by={};list.forEach(e=>(by[e.date]=by[e.date]||[]).push(e));
   const days=Object.keys(by).sort().reverse();
-  if(!days.length&&state.tview==='day'){$('#v-tracker').innerHTML=`<div class="daygrp"><div class="empty"><b>Nothing logged for this day</b>Press Start to time what you're doing, use the list icon to add a block of time, or tap "Log my usual day".</div></div>`;return;}
+  if(!days.length&&state.tview==='day'){const ds0=iso(range()[0]);$('#v-tracker').innerHTML=`<div class="daygrp">${showWho?'':schedLine(subjectUid(),ds0,[])}<div class="empty"><b>Nothing logged for this day</b>Press Start to time what you're doing, use the list icon to add a block of time, or tap "Log my usual day".</div></div>`;return;}
   if(!days.length){$('#v-tracker').innerHTML=`<div class="daygrp"><div class="empty"><b>No time logged this week</b>Type what you're working on above and press Start, or switch to manual mode (the list icon) to add a block of time. "Log my usual day" adds your office and home hours in one tap.</div></div>`;return;}
   $('#v-tracker').innerHTML=days.map(ds=>{
     const es=by[ds].slice().sort((a,b)=>(b.start||'')<(a.start||'')?-1:(b.start||'')>(a.start||'')?1:0);
     const tot=es.reduce((t,e)=>t+workH(e),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
-    return `<div class="daygrp${lv?' leave':''}"><div class="dayhead${isWeekendDate(parse(ds))?' wk':''}"><span class="d">${dayLabel(ds)}${isWeekendDate(parse(ds))?WKND_CHIP:''}</span><span class="t">${lv&&!tot?'Day off':'Total'}<b>${lv&&!tot?'':dur(tot)}</b></span></div>`+
+    return `<div class="daygrp${lv?' leave':''}"><div class="dayhead${isWeekendDate(parse(ds))?' wk':''}"><span class="d">${dayLabel(ds)}${isWeekendDate(parse(ds))?WKND_CHIP:''}</span><span class="t">${lv&&!tot?'Day off':'Total'}<b>${lv&&!tot?'':dur(tot)}</b></span></div>${showWho?'':schedLine(subjectUid(),ds,es)}`+
       es.map(e=>{const mine=e.uid===state.uid,lvE=isLeave(e.location);
         return `<div class="row"><div class="desc"><b>${esc(e.task)}</b>${e.notes?`<span>${esc(e.notes)}</span>`:''}</div>
         <div class="tags">${projTag(e.project)}${locTag(e.location)}${showWho?`<span class="who">${esc(nameOf(e.uid))}</span>`:''}</div>
@@ -261,12 +273,14 @@ function renderCal(list,showWho,r){
   const H=(hi-lo)*PX;const t=iso(new Date());
   let h=`<div class="hcell" style="border-left:0"></div>`;
   for(let i=0;i<n;i++){const d=days[i],ds=iso(d);const wk=isWeekendDate(d);const tot=list.filter(e=>e.date===ds).reduce((a,e)=>a+workH(e),0);
-    h+=`<div class="hcell${ds===t?' today':''}${wk?' wk':''}">${wk?WKND_CHIP:''}${DN[d.getDay()]} ${d.getDate()}<b>${dur(tot)}</b></div>`;}
+    const es0=list.filter(e=>e.date===ds),sch=showWho?0:daySched(subjectUid(),ds,es0);
+    h+=`<div class="hcell${ds===t?' today':''}${wk?' wk':''}">${wk?WKND_CHIP:''}${DN[d.getDay()]} ${d.getDate()}<b>${dur(tot)}${sch?`<small class="of"> of ${dur(sch)}</small>`:''}</b>${sch?diffChip(tot,sch):''}</div>`;}
   let g=`<div class="gutter" style="height:${H}px">`;for(let x=lo;x<=hi;x++) g+=`<span style="top:${(x-lo)*PX}px">${pad(x%24)}:00</span>`;g+='</div>';
   let cols='';
   for(let i=0;i<n;i++){const d=days[i],ds=iso(d);const es=list.filter(e=>e.date===ds);const lv=!showWho&&es.some(e=>isLeave(e.location));
     let c=`<div class="col${lv?' leave':''}${isWeekendDate(d)?' wk':''}" data-day="${ds}" style="height:${H}px">`;
     for(let x=1;x<hi-lo;x++) c+=`<div class="line" style="top:${x*PX}px"></div>`;
+    if(!showWho&&daySched(subjectUid(),ds,es)) schedBlocks(subjectUid()).forEach(b=>{let s0=toMin(b.start),e0=toMin(b.end);if(e0<=s0) e0+=1440;const top=(s0/60-lo)*PX,bot=Math.min(e0/60,hi)-lo;const ht=bot*PX-top;if(ht>0) c+=`<div class="offband" style="top:${top}px;height:${ht}px"><span>Official</span></div>`;});
     es.forEach(e=>{
       if(isLeave(e.location)){c+=`<div class="blk leave">${esc(e.location)}</div>`;return;}
       if(!e.start||!e.end) return;
@@ -293,7 +307,7 @@ function renderMonth(list,showWho,r){
         if(isLeave(e.location)) return `<span class="mt lv" title="${esc(e.notes||'')}">${esc(e.location)}</span>`;
         const mine=e.uid===state.uid;const tip=[e.task,e.start&&e.end?e.start+' to '+e.end:'',e.project,e.notes].filter(Boolean).join(' | ');
         return `<button type="button" class="mt${mine?'':' who'}" style="--lc:${LOCVAR[e.location]||'var(--office)'}" ${mine?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(tip)}">${esc(e.task)}<small>${dur(e.hours)}${showWho?' · '+esc(nameOf(e.uid)):''}</small></button>`;}).join('');
-      h+=`<div class="mc${ds===t?' today':''}${isWeekendDate(d)?' wk':''}${lv?' leave':''}${es.length?'':' empty-m'}" data-mday="${ds}"><div class="top"><span class="n">${d.getDate()}</span><span class="wd">${DN[d.getDay()]}${isWeekendDate(d)?' · Weekend':''}</span><span class="h">${tot?dur(tot):''}</span></div>${items}</div>`;
+      h+=`<div class="mc${ds===t?' today':''}${isWeekendDate(d)?' wk':''}${lv?' leave':''}${es.length?'':' empty-m'}" data-mday="${ds}"><div class="top"><span class="n">${d.getDate()}</span><span class="wd">${DN[d.getDay()]}${isWeekendDate(d)?' · Weekend':''}</span><span class="h${(()=>{const s=showWho?0:daySched(subjectUid(),ds,es);return s&&tot?(tot+1/60>=s?' met':' under'):'';})()}">${tot?dur(tot):''}</span></div>${items}</div>`;
     }
   }
   g.innerHTML=h;
@@ -440,6 +454,8 @@ document.addEventListener('change',async e=>{
 });
 function renderReports(list,r){
   const work=list.filter(e=>!isLeave(e.location)&&!isBreak(e.location));
+  const su=state.person==='all'?null:subjectUid();let schedTot=0;
+  if(su){for(let d=new Date(r[0]);d<=r[1];d=addDays(d,1)){const ds=iso(d);if(d>new Date()) break;schedTot+=daySched(su,ds,list.filter(e=>e.date===ds));}}
   const brk=list.filter(e=>isBreak(e.location)).reduce((a,e)=>a+(+e.hours||0),0);
   const tot=work.reduce((a,e)=>a+workH(e),0);
   const sum=l=>work.filter(e=>e.location===l).reduce((a,e)=>a+workH(e),0);
@@ -458,6 +474,7 @@ function renderReports(list,r){
       <div class="card"><div class="k">Office</div><div class="v">${dur(sum('Office'))}</div></div>
       <div class="card"><div class="k">WFH</div><div class="v">${dur(sum('Home'))}</div></div>
       <div class="card"><div class="k">Field work</div><div class="v">${dur(sum('Field work'))}</div></div>
+      ${schedTot?`<div class="card"><div class="k">Scheduled</div><div class="v">${dur(schedTot)}</div></div><div class="card"><div class="k">Over / under</div><div class="v">${diffChip(tot,schedTot)||'0:00'}</div></div>`:''}
     </div>
     <div class="panel"><h3>Hours per day</h3><div class="bars" style="overflow-x:auto">${bars}</div><div class="barlbls">${lbls}</div>
       <div class="legend"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>WFH</span><span><i style="background:var(--field)"></i>Field work</span></div></div>

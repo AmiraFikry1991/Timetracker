@@ -202,6 +202,21 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .sheet .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sheet label{display:grid;gap:4px;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:0}
 .sheet input,.sheet select,.sheet textarea{font-weight:500;font-size:.95rem;text-transform:none;letter-spacing:0;color:var(--ink)}
+.sched-line{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--hover);font-size:.82rem;color:var(--muted)}
+.sched-line b{color:var(--ink);font-family:var(--f-mono);font-weight:500}
+.sched-line .late{color:var(--muted);font-style:italic}
+.dchip{display:inline-block;font-family:var(--f-mono);font-size:.74rem;font-weight:600;border-radius:99px;padding:1px 8px}
+.dchip.over{background:#DFF2E5;color:#2E6B4A}
+.dchip.under{background:#FBE1DB;color:#9A4A3A}
+.dchip.ok{background:var(--accent-soft);color:var(--accent)}
+.hcell .dchip{margin-top:3px}
+.card .v .dchip{font-size:1.05rem;padding:4px 12px;vertical-align:4px}
+.hcell small.of{font-family:var(--f-body);color:var(--muted);font-weight:500}
+.offband{position:absolute;left:2px;right:2px;border:1.5px dashed #9CB8DA;border-radius:6px;background:rgba(156,184,218,.08);pointer-events:none;z-index:0}
+.offband span{position:absolute;right:6px;top:2px;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7FA6D6}
+.blk{z-index:1}
+.mc .h.met{color:#2E6B4A;font-weight:600}
+.mc .h.under{color:#B5574A;font-weight:600}
 .wknd{display:inline-block;margin-left:6px;font-family:var(--f-body);font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7A5BA8;background:var(--weekend-chip);border-radius:99px;padding:1px 7px;vertical-align:2px}
 .hcell .wknd{display:table;margin:0 auto 3px}
 .hcell.wk,.mh.wk{background:var(--weekend)}
@@ -335,7 +350,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0652"></script>
+<script src="config.js?v=20261016-0701"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -370,7 +385,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 06:52</small></div>
+    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:01</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -492,8 +507,8 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <fieldset class="pset" id="p-tabs"><legend>Pages they can see</legend>
       <label><input type="checkbox" value="dayview"> Day</label><label><input type="checkbox" value="calendar"> Week</label><label><input type="checkbox" value="month"> Month</label><label><input type="checkbox" value="todo"> To Do</label><label><input type="checkbox" value="reports"> Reports</label>
       <span class="hint">Tracker is always visible.</span></fieldset>
-    <fieldset class="pset usual" id="p-usual"><legend>"Log my usual day" button</legend>
-      <span class="hint">Set up to two blocks. Leave both empty to hide the button.</span>
+    <fieldset class="pset usual" id="p-usual"><legend>Official working hours</legend>
+      <span class="hint">Their scheduled hours on working days (up to two blocks). TaDay compares these with what they actually log, and uses them for the "Log my usual day" button. Leave both empty for no fixed hours.</span>
       <div class="urow"><select id="p-u0-loc" aria-label="Block 1 location"><option value="">None</option><option value="Office">Office</option><option value="Home">WFH</option><option value="Field work">Field work</option><option value="Break">Break</option></select><input type="time" id="p-u0-s" step="60" aria-label="Block 1 from"><span>to</span><input type="time" id="p-u0-e" step="60" aria-label="Block 1 to"></div>
       <div class="urow"><select id="p-u1-loc" aria-label="Block 2 location"><option value="">None</option><option value="Office">Office</option><option value="Home">WFH</option><option value="Field work">Field work</option><option value="Break">Break</option></select><input type="time" id="p-u1-s" step="60" aria-label="Block 2 from"><span>to</span><input type="time" id="p-u1-e" step="60" aria-label="Block 2 to"></div>
     </fieldset>
@@ -527,6 +542,6 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0652"></script>
+<script src="app.js?v=20261016-0701"></script>
 </body>
 </html>
