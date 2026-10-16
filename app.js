@@ -31,15 +31,22 @@ function weekStartOf(a){const ws=appCfg().weekStart;return addDays(a,-((a.getDay
 function weekDays(start){const c=appCfg();const out=[];for(let i=0;i<7;i++){const d=addDays(start,i);if(c.showWeekends||c.workDays.includes(d.getDay())) out.push(d);}return out;}
 function subjectUid(){return state.person==='all'?null:state.person==='me'?state.uid:state.person;}
 function schedBlocks(uid){if(!uid) return [];if(uid===state.uid) return (state.perms&&state.perms.usual)||[];const p=state.profiles.find(x=>x.id===uid);return p?permsFor(p).usual:[];}
-function daySched(uid,ds,es){const d=parse(ds);if(!uid||isWeekendDate(d)||es.some(e=>e.uid===uid&&isLeave(e.location))) return 0;return schedBlocks(uid).reduce((a,b)=>a+(exactH(b.start,b.end)||0),0);}
+function personPerms(uid){if(!uid) return null;if(uid===state.uid) return state.perms||null;const p=state.profiles.find(x=>x.id===uid);return p?permsFor(p):null;}
+function daySched(uid,ds,es){const d=parse(ds);if(!uid||isWeekendDate(d)||es.some(e=>e.uid===uid&&isLeave(e.location))) return 0;
+  const pp=personPerms(uid);if(pp&&pp.dailyHours>0) return pp.dailyHours;
+  return schedBlocks(uid).reduce((a,b)=>a+(exactH(b.start,b.end)||0),0);}
+// Time that counts toward the daily target: work, plus breaks up to the person's included break.
+function dayCredit(uid,ds,es){const mine=es.filter(e=>e.uid===uid&&e.date===ds);const work=mine.reduce((a,e)=>a+workH(e),0);
+  const brk=mine.filter(e=>isBreak(e.location)).reduce((a,e)=>a+(+e.hours||0),0);const pp=personPerms(uid);const inc=Math.min(brk,(pp&&pp.breakIncl)||0);
+  return {work,brk,inc,credit:work+inc};}
 function diffChip(worked,sched){if(!sched) return '';const d=worked-sched,m=Math.round(Math.abs(d)*60);if(m<1) return '<span class="dchip ok">On target</span>';return `<span class="dchip ${d>0?'over':'under'}">${d>0?'+':'-'}${dur(m/60)}</span>`;}
 function schedLine(uid,ds,es){
   const bl=schedBlocks(uid),s=daySched(uid,ds,es);if(!s) return '';
-  const w=es.filter(e=>e.uid===uid).reduce((a,e)=>a+workH(e),0);
+  const pp=personPerms(uid)||{},c=dayCredit(uid,ds,es),w=c.work;
   const timed=es.filter(e=>e.uid===uid&&!isLeave(e.location)&&!isBreak(e.location)&&e.start).map(e=>e.start).sort();
   const first=timed[0],o=bl[0]&&bl[0].start;let late='';
   if(first&&o){const dm=toMin(first)-toMin(o);if(dm>=5) late=` · started ${dur(dm/60)} late`;else if(dm<=-5) late=` · started ${dur(-dm/60)} early`;}
-  return `<div class="sched-line"><span>Official ${bl.map(b=>esc(b.start)+' to '+esc(b.end)).join(', ')}</span><span>Scheduled <b>${dur(s)}</b></span><span>Worked <b>${dur(w)}</b></span>${diffChip(w,s)}<span class="late">${late.replace(/^ · /,'')}</span></div>`;
+  return `<div class="sched-line">${bl.length?`<span>Official ${bl.map(b=>esc(b.start)+' to '+esc(b.end)).join(', ')}</span>`:''}<span>Target <b>${dur(s)}</b>${pp.breakIncl?` incl. ${dur(pp.breakIncl)} break`:''}</span><span>Worked <b>${dur(w)}</b>${c.inc?` + break <b>${dur(c.inc)}</b>`:''}</span>${diffChip(c.credit,s)}<span class="late">${late.replace(/^ · /,'')}</span></div>`;
 }
 const WKND_CHIP='<span class="wknd">Weekend</span>';
 async function loadApp(){if(!sb) return;const{data,error}=await sb.from('app_settings').select('data').eq('id',1).maybeSingle();state.appError=!!error;state.app=(data&&data.data)||{};}
@@ -47,7 +54,9 @@ function permsFor(row){
   const s=(row&&row.settings)||{},email=((row&&row.email)||'').toLowerCase(),owner=OWNER_EMAILS.includes(email);
   return {locations:Array.isArray(s.locations)?s.locations:(owner?ALL_LOCS.slice():appCfg().defaults.locations),
           tabs:Array.isArray(s.tabs)?s.tabs:(owner?ALL_TABS.slice():appCfg().defaults.tabs),
-          usual:Array.isArray(s.usual)?s.usual:(owner?OWNER_USUAL:[])};
+          usual:Array.isArray(s.usual)?s.usual:(owner?OWNER_USUAL:[]),
+          dailyHours:(+s.dailyHours>0)?+s.dailyHours:(owner?8:0),
+          breakIncl:(s.breakIncl!=null&&s.breakIncl!=='')?(+s.breakIncl||0):(owner?1:0)};
 }
 const toMin=t=>{const[a,b]=t.split(':').map(Number);return a*60+b;};
 const spanMin=e=>{if(!e.start||!e.end) return null;const s=toMin(e.start);let x=toMin(e.end);if(x<=s) x+=1440;return [s,x];};
@@ -295,8 +304,8 @@ function renderCal(list,showWho,r){
   const H=(hi-lo)*PX;const t=iso(new Date());
   let h=`<div class="hcell" style="border-left:0"></div>`;
   for(let i=0;i<n;i++){const d=days[i],ds=iso(d);const wk=isWeekendDate(d);const tot=list.filter(e=>e.date===ds).reduce((a,e)=>a+workH(e),0);
-    const es0=list.filter(e=>e.date===ds),sch=showWho?0:daySched(subjectUid(),ds,es0);
-    h+=`<div class="hcell${ds===t?' today':''}${wk?' wk':''}">${wk?WKND_CHIP:''}${DN[d.getDay()]} ${d.getDate()}<b>${dur(tot)}${sch?`<small class="of"> of ${dur(sch)}</small>`:''}</b>${sch?diffChip(tot,sch):''}</div>`;}
+    const es0=list.filter(e=>e.date===ds),sch=showWho?0:daySched(subjectUid(),ds,es0),cr=sch?dayCredit(subjectUid(),ds,es0).credit:tot;
+    h+=`<div class="hcell${ds===t?' today':''}${wk?' wk':''}">${wk?WKND_CHIP:''}${DN[d.getDay()]} ${d.getDate()}<b>${dur(sch?cr:tot)}${sch?`<small class="of"> of ${dur(sch)}</small>`:''}</b>${sch?diffChip(cr,sch):''}</div>`;}
   let g=`<div class="gutter" style="height:${H}px">`;for(let x=lo;x<=hi;x++) g+=`<span style="top:${(x-lo)*PX}px">${pad(x%24)}:00</span>`;g+='</div>';
   let cols='';
   for(let i=0;i<n;i++){const d=days[i],ds=iso(d);const es=list.filter(e=>e.date===ds);const lv=!showWho&&es.some(e=>isLeave(e.location));
@@ -332,7 +341,7 @@ function renderMonth(list,showWho,r){
         if(isLeave(e.location)) return `<span class="mt lv" title="${esc(e.notes||'')}">${esc(e.location)}</span>`;
         const mine=e.uid===state.uid;const tip=[e.task,e.start&&e.end?e.start+' to '+e.end:'',e.project,e.notes].filter(Boolean).join(' | ');
         return `<button type="button" class="mt${mine?'':' who'}" style="--lc:${LOCVAR[e.location]||'var(--office)'}" ${mine?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(tip)}">${esc(e.task)}<small>${dur(e.hours)}${showWho?' · '+esc(nameOf(e.uid)):''}</small></button>`;}).join('');
-      h+=`<div class="mc${ds===t?' today':''}${isWeekendDate(d)?' wk':''}${lv?' leave':''}${es.length?'':' empty-m'}" data-mday="${ds}"><div class="top"><span class="n">${d.getDate()}</span><span class="wd">${DN[d.getDay()]}${isWeekendDate(d)?' · Weekend':''}</span><span class="h${(()=>{const s=showWho?0:daySched(subjectUid(),ds,es);return s&&tot?(tot+1/60>=s?' met':' under'):'';})()}">${tot?dur(tot):''}</span></div>${items}</div>`;
+      h+=`<div class="mc${ds===t?' today':''}${isWeekendDate(d)?' wk':''}${lv?' leave':''}${es.length?'':' empty-m'}" data-mday="${ds}"><div class="top"><span class="n">${d.getDate()}</span><span class="wd">${DN[d.getDay()]}${isWeekendDate(d)?' · Weekend':''}</span><span class="h${(()=>{const s=showWho?0:daySched(subjectUid(),ds,es);const cr=s?dayCredit(subjectUid(),ds,es).credit:0;return s&&tot?(cr+1/60>=s?' met':' under'):'';})()}">${tot?dur(tot):''}</span></div>${items}</div>`;
     }
   }
   g.innerHTML=h;
@@ -372,6 +381,7 @@ function openPerms(em){
   document.querySelectorAll('#p-locs input').forEach(c=>c.checked=pr.locations.includes(c.value));
   document.querySelectorAll('#p-tabs input').forEach(c=>c.checked=pr.tabs.includes(c.value));
   [0,1].forEach(i=>{const u=pr.usual[i]||{};$('#p-u'+i+'-loc').value=u.loc||'';$('#p-u'+i+'-s').value=u.start||'';$('#p-u'+i+'-e').value=u.end||'';});
+  $('#p-dh').value=pr.dailyHours||'';$('#p-bi').value=pr.breakIncl||'';
   $('#p-msg').textContent='';$('#perm').hidden=false;
 }
 $('#perm-cancel').onclick=()=>{$('#perm').hidden=true;};
@@ -382,7 +392,8 @@ $('#perm-form').addEventListener('submit',async ev=>{
   if(!locations.length){$('#p-msg').textContent='Pick at least one place they can log time.';return;}
   const tabs=[...document.querySelectorAll('#p-tabs input:checked')].map(c=>c.value);
   const usual=[0,1].map(i=>({loc:$('#p-u'+i+'-loc').value,start:$('#p-u'+i+'-s').value,end:$('#p-u'+i+'-e').value})).filter(u=>u.loc&&u.start&&u.end);
-  const role=$('#p-role').value,patch={settings:{locations,tabs,usual}};
+  const dailyHours=parseFloat($('#p-dh').value)||0,breakIncl=parseFloat($('#p-bi').value)||0;
+  const role=$('#p-role').value,patch={settings:{locations,tabs,usual,dailyHours,breakIncl}};
   if(!$('#p-role').disabled){patch.is_admin=role==='admin';patch.can_view_all=role!=='member';}
   $('#p-save').disabled=true;$('#p-msg').textContent='Saving...';
   const a=await sb.from('allowed_emails').update(patch).eq('email',em);
@@ -489,8 +500,8 @@ document.addEventListener('change',async e=>{
 });
 function renderReports(list,r){
   const work=list.filter(e=>!isLeave(e.location)&&!isBreak(e.location));
-  const su=state.person==='all'?null:subjectUid();let schedTot=0;
-  if(su){for(let d=new Date(r[0]);d<=r[1];d=addDays(d,1)){const ds=iso(d);if(d>new Date()) break;schedTot+=daySched(su,ds,list.filter(e=>e.date===ds));}}
+  const su=state.person==='all'?null:subjectUid();let schedTot=0,creditTot=0;
+  if(su){for(let d=new Date(r[0]);d<=r[1];d=addDays(d,1)){const ds=iso(d);if(d>new Date()) break;const dl=list.filter(e=>e.date===ds);schedTot+=daySched(su,ds,dl);creditTot+=dayCredit(su,ds,dl).credit;}}
   const brk=list.filter(e=>isBreak(e.location)).reduce((a,e)=>a+(+e.hours||0),0);
   const tot=work.reduce((a,e)=>a+workH(e),0);
   const sum=l=>work.filter(e=>e.location===l).reduce((a,e)=>a+workH(e),0);
@@ -509,7 +520,7 @@ function renderReports(list,r){
       <div class="card"><div class="k">Office</div><div class="v">${dur(sum('Office'))}</div></div>
       <div class="card"><div class="k">WFH</div><div class="v">${dur(sum('Home'))}</div></div>
       <div class="card"><div class="k">Field work</div><div class="v">${dur(sum('Field work'))}</div></div>
-      ${schedTot?`<div class="card"><div class="k">Scheduled</div><div class="v">${dur(schedTot)}</div></div><div class="card"><div class="k">Over / under</div><div class="v">${diffChip(tot,schedTot)||'0:00'}</div></div>`:''}
+      ${schedTot?`<div class="card"><div class="k">Scheduled</div><div class="v">${dur(schedTot)}</div></div><div class="card"><div class="k">Over / under</div><div class="v">${diffChip(creditTot,schedTot)||'0:00'}</div></div>`:''}
     </div>
     <div class="panel"><h3>Hours per day</h3><div class="bars" style="overflow-x:auto">${bars}</div><div class="barlbls">${lbls}</div>
       <div class="legend"><span><i style="background:var(--office)"></i>Office</span><span><i style="background:var(--home)"></i>WFH</span><span><i style="background:var(--field)"></i>Field work</span></div></div>
@@ -657,6 +668,8 @@ function renderSettings(){
   document.querySelectorAll('#s-tabs input').forEach(x=>x.checked=c.defaults.tabs.includes(x.value));
   const RL={admin:'Admin',viewer:'Viewer',member:'Member'};
   const people=state.profiles.filter(p=>p.active).sort((a,b)=>(a.full_name||a.email).localeCompare(b.full_name||b.email));
+  $('#s-hours').innerHTML=people.length?`<div class="wh-head"><span>Person</span><span>Hours per day</span><span>Break included</span><span></span></div>`+people.map(p=>{const pr=permsFor(p);
+    return `<div class="wh-row"><b>${esc(p.full_name||p.email)}${p.id===state.uid?' (you)':''}</b><label><input type="number" min="0" max="24" step="0.25" value="${pr.dailyHours||''}" data-wh-dh="${esc(p.email)}" aria-label="Hours per day for ${esc(p.full_name||p.email)}"> h</label><label><input type="number" min="0" max="5" step="0.25" value="${pr.breakIncl||''}" data-wh-bi="${esc(p.email)}" aria-label="Break included for ${esc(p.full_name||p.email)}"> h</label><button class="btn" type="button" data-wh-save="${esc(p.email)}">Save</button></div>`;}).join(''):'<p class="hint">No one has signed in yet.</p>';
   $('#s-people').innerHTML=people.length?people.map(p=>{const pr=permsFor(p),role=p.is_admin?'admin':p.can_view_all?'viewer':'member',custom=p.settings&&Object.keys(p.settings).length;
     return `<div class="person-row"><div><b>${esc(p.full_name||p.email)}${p.id===state.uid?' (you)':''}</b><span class="e">${esc(pr.locations.map(locLabel).join(', '))} · ${esc(pr.tabs.map(t=>TAB_LBL[t]).join(', ')||'Tracker only')}${custom?'':' · team defaults'}</span></div><span class="badge">${RL[role]}</span><span class="acts2"><button class="btn" type="button" data-perms="${esc(p.email)}">Edit</button>${p.id===state.uid?'':`<button class="btn" type="button" data-setpw="${esc(p.email)}" data-name="${esc(p.full_name||p.email)}">Set password</button>`}</span></div>`;}).join(''):'<p class="hint">No one has signed in yet.</p>';
 }
@@ -674,6 +687,18 @@ $('#settings-form').addEventListener('submit',async ev=>{
   if(error){$('#s-msg').textContent=/app_settings/.test(error.message)?'Settings need a one-time database update first (supabase/settings.sql).':'That did not save: '+error.message;return;}
   state.app=data;state.appError=false;$('#s-msg').textContent='Saved. Everyone sees the new work week next time they open or refresh TaDay.';
   applyPerms(state.perms?permsFor((state.profiles.find(p=>p.id===state.uid))||{}):permsFor({}));renderSettings();
+});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-wh-save]');if(!b) return;const em=b.dataset.whSave;
+  const dh=parseFloat(document.querySelector(`[data-wh-dh="${CSS.escape(em)}"]`).value)||0,bi=parseFloat(document.querySelector(`[data-wh-bi="${CSS.escape(em)}"]`).value)||0;
+  if(bi>dh&&dh){b.textContent='Break is longer than the day';return;}
+  const p=state.profiles.find(x=>x.email===em),inv=state.invites.find(x=>x.email===em);
+  const base=(p&&p.settings&&Object.keys(p.settings).length?p.settings:(inv&&inv.settings))||{};
+  const settings={...base,dailyHours:dh,breakIncl:bi};b.disabled=true;b.textContent='Saving...';
+  const r1=await sb.from('profiles').update({settings}).eq('email',em);const r2=await sb.from('allowed_emails').update({settings}).eq('email',em);
+  b.disabled=false;const err=r1.error||r2.error;
+  if(err){b.textContent=/settings/.test(err.message)?'Needs database update':'Did not save';return;}
+  b.textContent='Saved';await loadPeople();if(p&&p.id===state.uid){state.perms=permsFor({email:em,settings});}render();
 });
 /* ---------- permissions (apply to me) ---------- */
 function applyPerms(p){
