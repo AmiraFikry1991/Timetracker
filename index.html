@@ -216,6 +216,12 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .offband span{position:absolute;right:6px;top:2px;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7FA6D6}
 .blk{z-index:1;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start}
 .blk.lane{border:1px solid var(--surface)}
+.blk[data-edit]{cursor:grab;-webkit-user-select:none;user-select:none}
+.blk.dragging{cursor:grabbing;z-index:5;box-shadow:0 10px 24px -8px rgba(46,58,78,.5);opacity:.95;outline:2px solid var(--accent)}
+body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
+.blk .rz{position:absolute;left:0;right:0;bottom:0;height:7px;cursor:ns-resize}
+.blk .rz::after{content:"";position:absolute;left:50%;bottom:2px;width:22px;height:3px;margin-left:-11px;border-radius:2px;background:rgba(46,58,78,.25);opacity:0;transition:opacity .15s}
+.blk:hover .rz::after,.blk.dragging .rz::after{opacity:1}
 .mc .h.met{color:#2E6B4A;font-weight:600}
 .mc .h.under{color:#B5574A;font-weight:600}
 .hello-r{display:flex;align-items:center;gap:12px}
@@ -366,7 +372,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0719"></script>
+<script src="config.js?v=20261016-0725"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -401,7 +407,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:19</small></div>
+    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:25</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -525,7 +531,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
         <li><b>Add time:</b> type the task, set <b>From</b> and <b>To</b>, or type the number of <b>minutes</b> (any number, like 5 or 7) and the end time fills in. Press <b>Add</b>.</li>
         <li><b>Log my usual day</b> (if you have one) adds your official hours for the day you are viewing in one tap.</li>
       </ol>
-      <p>Add <b>notes</b> under the task for details. To change or delete an entry, tap &#9998; next to it, or tap its block in Day, Week or Month. &#9654; restarts a task.</p>
+      <p>Add <b>notes</b> under the task for details. To change or delete an entry, tap &#9998; next to it, or tap its block in Day, Week or Month. In Day and Week you can also <b>drag a block</b> to a new time (or another day), and drag its bottom edge to change its length. On a phone, press and hold first. &#9654; restarts a task.</p>
     </section>
 
     <section id="g-where"><h3>Where you worked</h3>
@@ -630,6 +636,6 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0719"></script>
+<script src="app.js?v=20261016-0725"></script>
 </body>
 </html>

@@ -309,10 +309,11 @@ function renderCal(list,showWho,r){
       const[sh,sm]=e.start.split(':').map(Number);let top=((sh+sm/60)-lo)*PX;let ht=Math.max(18,(+e.hours||0)*PX);
       if(top+ht>H) ht=H-top;
       const L=lay.get(e.id),pos=L&&L.n>1?`left:calc(${(L.lane/L.n*100).toFixed(3)}% + 2px);width:calc(${(100/L.n).toFixed(3)}% - 4px);right:auto;`:'';
-      c+=`<button type="button" class="blk${isBreak(e.location)?' brk':''}${L&&L.n>1?' lane':''}" style="${pos}top:${top}px;height:${ht}px;--lc:${LOCVAR[e.location]||'var(--office)'}" ${e.uid===state.uid?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(e.task)} ${esc(e.start)} to ${esc(e.end)}"><b>${esc(e.task)}</b>${esc(e.start)} - ${esc(e.end)}${showWho?' · '+esc(nameOf(e.uid)):''}${n===1&&e.project?' · '+esc(e.project):''}${n===1&&e.notes?'<br>'+esc(e.notes):''}</button>`;
+      c+=`<button type="button" class="blk${isBreak(e.location)?' brk':''}${L&&L.n>1?' lane':''}" style="${pos}top:${top}px;height:${ht}px;--lc:${LOCVAR[e.location]||'var(--office)'}" ${e.uid===state.uid?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(e.task)} ${esc(e.start)} to ${esc(e.end)}${e.uid===state.uid?' (drag to move)':''}"><b>${esc(e.task)}</b><span class="tm">${esc(e.start)} - ${esc(e.end)}</span>${showWho?' · '+esc(nameOf(e.uid)):''}${n===1&&e.project?' · '+esc(e.project):''}${n===1&&e.notes?'<br>'+esc(e.notes):''}${e.uid===state.uid?'<span class="rz" aria-hidden="true"></span>':''}</button>`;
     });
     if(ds===t){const now=new Date();const y=((now.getHours()+now.getMinutes()/60)-lo)*PX;if(y>=0&&y<=H) c+=`<div class="now" style="top:${y}px"></div>`;}
     cols+=c+'</div>';}
+  state.calGeom={lo,hi,PX};
   const cal=$('#cal');cal.style.gridTemplateColumns=`52px repeat(${n},minmax(0,1fr))`;cal.style.minWidth=n===1?'0':'';cal.innerHTML=h+g+cols;
 }
 function renderMonth(list,showWho,r){
@@ -539,9 +540,60 @@ $('#e-form').addEventListener('submit',async ev=>{
   try{await updateEntry(id,ch);}catch(e){showBanner('Your changes did not save. Try again.');}
 });
 
+/* ---------- drag and drop in Day / Week ---------- */
+(function(){
+  const cal=$('#cal');let d=null;
+  const fmt=m=>{m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60);};
+  const snap=m=>Math.round(m/5)*5;
+  function colAt(x,y){const el=document.elementsFromPoint(x,y).find(n=>n.classList&&n.classList.contains('col'));return el||null;}
+  function begin(){
+    d.active=true;d.el.classList.add('dragging');document.body.classList.add('is-dragging');
+  }
+  cal.addEventListener('pointerdown',ev=>{
+    const el=ev.target.closest('.blk[data-edit]');if(!el||ev.button>0) return;
+    const e=state.rows.get(el.dataset.edit);if(!e||e.uid!==state.uid||!e.start||!e.end) return;
+    const g=state.calGeom;const s=spanMin(e);
+    d={el,e,g,mode:ev.target.classList.contains('rz')?'resize':'move',x0:ev.clientX,y0:ev.clientY,top0:parseFloat(el.style.top),h0:parseFloat(el.style.height),
+       s0:s[0],len:s[1]-s[0],col0:el.parentElement,active:false,touch:ev.pointerType==='touch',pid:ev.pointerId,timer:null,ns:s[0],ne:s[1],day:e.date};
+    if(d.touch){d.timer=setTimeout(()=>{if(d){begin();try{el.setPointerCapture(d.pid);}catch(_){}if(navigator.vibrate) navigator.vibrate(15);}},350);}
+  });
+  window.addEventListener('pointermove',ev=>{
+    if(!d||ev.pointerId!==d.pid) return;
+    const dx=ev.clientX-d.x0,dy=ev.clientY-d.y0;
+    if(!d.active){if(d.touch){if(Math.abs(dx)>8||Math.abs(dy)>8){clearTimeout(d.timer);d=null;}return;}
+      if(Math.abs(dx)<4&&Math.abs(dy)<4) return;begin();try{d.el.setPointerCapture(d.pid);}catch(_){}}
+    ev.preventDefault();
+    const g=d.g,minPerPx=60/g.PX;
+    if(d.mode==='move'){
+      let ns=snap(d.s0+dy*minPerPx);ns=Math.max(g.lo*60,Math.min(ns,g.hi*60-5));
+      d.ns=ns;d.ne=ns+d.len;d.el.style.top=((ns/60-g.lo)*g.PX)+'px';
+      const col=colAt(ev.clientX,ev.clientY);
+      if(col&&col.dataset.day){d.day=col.dataset.day;const off=col.getBoundingClientRect().left-d.col0.getBoundingClientRect().left;d.el.style.transform=off?`translateX(${off}px)`:'';}
+    }else{
+      let ne=snap(d.s0+d.len+dy*minPerPx);ne=Math.max(d.s0+5,Math.min(ne,d.s0+24*60));
+      d.ne=ne;d.el.style.height=Math.max(10,(ne-d.s0)/60*g.PX)+'px';
+    }
+    const tm=d.el.querySelector('.tm');if(tm) tm.textContent=fmt(d.ns)+' - '+fmt(d.ne)+(d.day!==d.e.date?' · '+dayLabel(d.day):'');
+  },{passive:false});
+  cal.addEventListener('touchmove',ev=>{if(d&&d.active) ev.preventDefault();},{passive:false});
+  async function finish(ev){
+    if(!d||(ev&&ev.pointerId!==d.pid)) return;
+    clearTimeout(d.timer);const x=d;d=null;
+    document.body.classList.remove('is-dragging');
+    if(!x.active) return;
+    x.el.classList.remove('dragging');state.justDragged=true;setTimeout(()=>{state.justDragged=false;},250);
+    const start=fmt(x.ns),end=fmt(x.ne);
+    if(start===x.e.start&&end===x.e.end&&x.day===x.e.date){render();return;}
+    try{await updateEntry(x.e.id,{date:x.day,start,end,hours:exactH(start,end)});
+      toast(`Moved <b>${esc(x.e.task)}</b> to ${esc(start)} - ${esc(end)}${x.day!==x.e.date?' on '+esc(dayLabel(x.day)):''}`);}
+    catch(err){showBanner('That move did not save. Try again.');render();}
+  }
+  window.addEventListener('pointerup',finish);
+  window.addEventListener('pointercancel',ev=>{if(d&&d.active) finish(ev);else{if(d) clearTimeout(d.timer);d=null;}});
+})();
 /* ---------- clicks ---------- */
 document.addEventListener('click',async e=>{
-  const ed=e.target.closest('[data-edit]');if(ed){openEditor(ed.dataset.edit,ed.dataset.date);return;}
+  const ed=e.target.closest('[data-edit]');if(ed){if(state.justDragged) return;openEditor(ed.dataset.edit,ed.dataset.date);return;}
   const pl=e.target.closest('[data-play]');if(pl){if(!guard()) return;const x=findMine(pl.dataset.play);if(!x) return;
     state.manual=false;store.set('tt.manual','0');$('#t-task').value=x.task;$('#t-project').value=x.project||'';$('#t-loc').value=normLoc(x.location);$('#t-notes').value='';syncManual();
     try{await startTimer(x.task,x.project||'',normLoc(x.location),'');}catch(err){showBanner('The timer did not start. Try again.');}return;}
