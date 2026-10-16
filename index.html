@@ -217,6 +217,21 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .blk{z-index:1}
 .mc .h.met{color:#2E6B4A;font-weight:600}
 .mc .h.under{color:#B5574A;font-weight:600}
+.hello-r{display:flex;align-items:center;gap:12px}
+.infobtn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--office);background:var(--surface);color:var(--accent);font-family:var(--f-display);font-style:italic;font-size:1.15rem;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0 0 2px;box-shadow:0 2px 8px -4px rgba(46,58,78,.3)}
+.infobtn:hover{background:var(--accent-soft);border-color:var(--accent)}
+.sheet.guide{width:min(720px,100%);gap:14px}
+.g-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.g-head h2 em{font-family:var(--f-script);font-style:normal;font-size:1.5em;color:#2F4D7A}
+.g-toc{display:flex;flex-wrap:wrap;gap:6px}
+.g-toc a{font-size:.8rem;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:4px 10px;text-decoration:none}
+.sheet.guide section{border-top:1px solid var(--line);padding-top:12px}
+.sheet.guide h3{margin:0 0 6px;font-family:var(--f-display);font-weight:400;font-size:1.25rem}
+.sheet.guide p,.sheet.guide li{font-size:.92rem;line-height:1.5;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:400}
+.sheet.guide ol,.sheet.guide ul{margin:6px 0;padding-left:20px;display:grid;gap:4px}
+.g-legend{list-style:none;padding-left:0!important}
+.g-legend li{display:flex;gap:8px;align-items:baseline}
+.g-legend i{width:12px;height:12px;border-radius:3px;flex:none;transform:translateY(1px)}
 .wknd{display:inline-block;margin-left:6px;font-family:var(--f-body);font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7A5BA8;background:var(--weekend-chip);border-radius:99px;padding:1px 7px;vertical-align:2px}
 .hcell .wknd{display:table;margin:0 auto 3px}
 .hcell.wk,.mh.wk{background:var(--weekend)}
@@ -350,7 +365,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0701"></script>
+<script src="config.js?v=20261016-0713"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -385,12 +400,12 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:01</small></div>
+    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:13</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
   <main>
-    <header class="hello"><h1 id="greet">Hello</h1><p id="today-line"></p></header>
+    <header class="hello"><h1 id="greet">Hello</h1><div class="hello-r"><p id="today-line"></p><button class="infobtn" id="help-open" type="button" aria-label="User guide" title="User guide">i</button></div></header>
     <!-- Timer bar -->
     <form class="timer" id="timer" autocomplete="off">
       <input class="what" id="t-task" maxlength="80" placeholder="What are you working on?" aria-label="Task">
@@ -496,6 +511,78 @@ td.r{text-align:right;font-family:var(--f-mono)}
   </main>
 </div>
 
+<div class="scrim" id="help" hidden>
+  <div class="sheet guide" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="g-head"><h2 id="help-title"><em>TaDay</em> user guide</h2><button class="btn icon" id="help-close" type="button" aria-label="Close guide">&times;</button></div>
+    <p class="tagline" style="margin:0">Log your day. Celebrate what&#39;s done.</p>
+    <nav class="g-toc" aria-label="Guide sections"><a href="#g-log">Logging time</a><a href="#g-where">Where you worked</a><a href="#g-views">Views</a><a href="#g-hours">Official hours</a><a href="#g-todo">To Do</a><a href="#g-phone">Phone app</a><a href="#g-admin" class="g-admin">Admins</a><a href="#g-help">Problems</a></nav>
+
+    <section id="g-log"><h3>Logging time</h3>
+      <p>Use the bar at the top of every page. Switch between the two modes with the pills on its right.</p>
+      <ol>
+        <li><b>Timer:</b> type what you are working on, pick a project and where you are, then press <b>Start</b>. Press <b>Stop</b> when you finish. The timer keeps running if you close the page.</li>
+        <li><b>Add time:</b> type the task, set <b>From</b> and <b>To</b>, or type the number of <b>minutes</b> (any number, like 5 or 7) and the end time fills in. Press <b>Add</b>.</li>
+        <li><b>Log my usual day</b> (if you have one) adds your official hours for the day you are viewing in one tap.</li>
+      </ol>
+      <p>Add <b>notes</b> under the task for details. To change or delete an entry, tap &#9998; next to it, or tap its block in Day, Week or Month. &#9654; restarts a task.</p>
+    </section>
+
+    <section id="g-where"><h3>Where you worked</h3>
+      <ul class="g-legend">
+        <li><i style="background:var(--office)"></i><b>Office</b> time at the office</li>
+        <li><i style="background:var(--home)"></i><b>WFH</b> working from home</li>
+        <li><i style="background:var(--field)"></i><b>Field work</b> out for work: bank, site visits, meetings</li>
+        <li><i style="background:var(--break)"></i><b>Break</b> not counted as worked time; a break inside working hours is taken off your total</li>
+        <li><i style="background:var(--leave-bg);border:1px solid var(--line)"></i><b>Leave and holidays</b> annual, sick, unpaid leave and public holidays turn the day gray</li>
+      </ul>
+      <p class="hint">You only see the options your admin has turned on for you.</p>
+    </section>
+
+    <section id="g-views"><h3>Views</h3>
+      <ul>
+        <li><b>Tracker:</b> your entries as a list, one day or one week at a time.</li>
+        <li><b>Day</b> and <b>Week:</b> your time laid out hour by hour.</li>
+        <li><b>Month:</b> the whole month with every task inside its day.</li>
+        <li><b>Reports:</b> totals for the week or month, hours per day, and breakdowns by location, project, person and leave.</li>
+      </ul>
+      <p>Weekend days are shaded lilac with a <span class="wknd" style="margin:0">Weekend</span> label. Use the arrows to move around and <b>Today</b> to jump back. <b>Export CSV</b> downloads what is on screen as a spreadsheet.</p>
+    </section>
+
+    <section id="g-hours"><h3>Official hours</h3>
+      <p>If you have official working hours, TaDay compares them with what you log. You will see <b>6:30 of 8:00</b> on each day, a dashed <b>Official</b> outline in Day and Week, and a chip: <span class="dchip over">+0:30</span> over, <span class="dchip under">-1:30</span> under, <span class="dchip ok">On target</span>. Weekends, leave and holidays count as 0.</p>
+    </section>
+
+    <section id="g-todo"><h3>To Do and Ta-da!</h3>
+      <p>Add things to do, with a due date if you like. Tick the circle when it is done and it moves to <b>Ta-da!</b>, your list of finished work. Tap a finished item to move it back. &#9654; starts the timer on a to-do.</p>
+    </section>
+
+    <section id="g-phone"><h3>Use it as a phone app</h3>
+      <ul>
+        <li><b>iPhone:</b> open TaDay in Safari, tap Share, then <b>Add to Home Screen</b>.</li>
+        <li><b>Android:</b> open TaDay in Chrome, tap &#8942;, then <b>Install app</b>.</li>
+      </ul>
+      <p>Inside the phone app, sign in with the <b>6-digit code</b> from the sign-in email rather than the link.</p>
+    </section>
+
+    <section id="g-admin" class="g-admin"><h3>For admins</h3>
+      <ul>
+        <li><b>Team:</b> invite people by name and email (Member, Viewer or Admin), resend links, remove or restore access.</li>
+        <li><b>Permissions:</b> for each person, choose where they can log time, which pages they see, and their official hours.</li>
+        <li><b>Settings:</b> working days, when the week starts, whether weekends show, and team defaults for new people.</li>
+        <li><b>Showing:</b> at the bottom of the sidebar, switch between your time, everyone, or one person. Every view, report and to-do list follows it.</li>
+      </ul>
+    </section>
+
+    <section id="g-help"><h3>Problems?</h3>
+      <ul>
+        <li><b>No sign-in email:</b> check spam, wait a few minutes, then ask for a new one.</li>
+        <li><b>Something looks out of date:</b> refresh. The date under Sign out shows the version you have.</li>
+        <li><b>Can&#39;t see an option or page:</b> your admin controls what you can see.</li>
+      </ul>
+    </section>
+    <p class="powered-login" style="text-align:center;margin-top:6px">Powered by <em>Amira Fikry</em></p>
+  </div>
+</div>
 <div class="scrim" id="perm" hidden>
   <form class="sheet" id="perm-form" autocomplete="off">
     <h2>Permissions for <span id="p-who"></span></h2>
@@ -542,6 +629,6 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0701"></script>
+<script src="app.js?v=20261016-0713"></script>
 </body>
 </html>

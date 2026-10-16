@@ -500,7 +500,10 @@ $('#e-mins').addEventListener('input',()=>{const m=parseInt($('#e-mins').value,1
   const s=$('#e-start').value;if(s){const x=(toMin(s)+m)%1440;$('#e-end').value=pad(Math.floor(x/60))+':'+pad(x%60);}});
 $('#e-cancel').onclick=closeEditor;
 $('#editor').addEventListener('click',e=>{if(e.target.id==='editor') closeEditor();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#editor').hidden) closeEditor();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#editor').hidden) closeEditor();if(e.key==='Escape'&&!$('#help').hidden) $('#help').hidden=true;});
+$('#help-open').onclick=()=>{document.querySelectorAll('#help .g-admin').forEach(x=>x.hidden=!state.isAdmin);$('#help').hidden=false;$('#help .sheet').scrollTop=0;};
+$('#help-close').onclick=()=>{$('#help').hidden=true;};
+$('#help').addEventListener('click',e=>{if(e.target.id==='help'){$('#help').hidden=true;return;}const a=e.target.closest('.g-toc a');if(a){e.preventDefault();const t=document.querySelector(a.getAttribute('href'));if(t) t.scrollIntoView({behavior:'smooth',block:'start'});}});
 $('#e-del').onclick=()=>{$('#e-delq').hidden=false;$('#e-del').hidden=true;};
 $('#e-no').onclick=()=>{$('#e-delq').hidden=true;$('#e-del').hidden=false;};
 $('#e-yes').onclick=async()=>{const{id}=state.editing;closeEditor();try{await deleteEntry(id);}catch(e){showBanner('That entry was not deleted. Try again.');}};
