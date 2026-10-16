@@ -1,7 +1,7 @@
 {
-  "name": "Timesheet",
-  "short_name": "Timesheet",
-  "description": "Log your time, see your day, week and month, and keep a to-do list.",
+  "name": "TaDay",
+  "short_name": "TaDay",
+  "description": "Log your day. Celebrate what's done. Time tracking, day, week and month views, and a to-do list that celebrates what you finish.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,6 +1,8 @@
-# Amira's Timesheet Tracker
+# TaDay
 
-A light, pastel time tracker for Amira and her team. Log time with a timer or by hand, keep a To Do list (and a Ta-da list of what you've finished), see your day, week and month, track office, home and field work hours plus leave and public holidays, and export to CSV.
+*Log your day. Celebrate what's done.*
+
+TaDay is a light, pastel time tracker for teams. Log time with a timer or by hand, keep a To Do list (and a Ta-da list of what you've finished), see your day, week and month, track office, home and field work hours plus leave and public holidays, and export to CSV.
 
 People sign in with just their email (a one-time link, no password). Only people the admin invites can get in. Each person sees and edits only their own time; admins see everyone's.
 
