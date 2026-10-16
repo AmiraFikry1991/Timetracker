@@ -196,6 +196,16 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .sheet .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sheet label{display:grid;gap:4px;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:0}
 .sheet input,.sheet select,.sheet textarea{font-weight:500;font-size:.95rem;text-transform:none;letter-spacing:0;color:var(--ink)}
+.pset{border:1px solid var(--line);border-radius:12px;padding:10px 14px 12px;margin:0;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.pset legend{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:0 4px}
+.pset label{display:flex;align-items:center;gap:6px;font-weight:600;font-size:.92rem;text-transform:none;letter-spacing:0;color:var(--ink)}
+.pset .hint{flex-basis:100%;font-size:.8rem}
+.pset.usual{flex-direction:column;align-items:stretch}
+.pset.usual .hint{flex-basis:auto}
+.urow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.urow select{flex:1 1 120px}
+.urow span{color:var(--muted);font-size:.85rem}
+#p-who{font-style:italic}
 .sheet .full{grid-column:1/-1}
 .sheet .foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.88rem}
@@ -308,7 +318,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0639"></script>
+<script src="config.js?v=20261016-0642"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -341,7 +351,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <button class="signout" id="signout" type="button">Sign out</button><small class="ver" id="ver">Updated 16 Oct 2026, 06:39</small></div>
+    <button class="signout" id="signout" type="button">Sign out</button><small class="ver" id="ver">Updated 16 Oct 2026, 06:42</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -434,6 +444,26 @@ td.r{text-align:right;font-family:var(--f-mono)}
   </main>
 </div>
 
+<div class="scrim" id="perm" hidden>
+  <form class="sheet" id="perm-form" autocomplete="off">
+    <h2>Permissions for <span id="p-who"></span></h2>
+    <label class="full">Role<select id="p-role"><option value="member">Member: logs and sees own time</option><option value="viewer">Viewer: sees everyone's time</option><option value="admin">Admin: sees everyone, manages team</option></select></label>
+    <p class="hint" id="p-role-note" hidden>You can't change your own role.</p>
+    <fieldset class="pset" id="p-locs"><legend>Where they can log time</legend>
+      <label><input type="checkbox" value="Office"> Office</label><label><input type="checkbox" value="Home"> WFH</label><label><input type="checkbox" value="Field work"> Field work</label><label><input type="checkbox" value="Break"> Break</label>
+      <span class="hint">Leave and public holidays are always available.</span></fieldset>
+    <fieldset class="pset" id="p-tabs"><legend>Pages they can see</legend>
+      <label><input type="checkbox" value="dayview"> Day</label><label><input type="checkbox" value="calendar"> Week</label><label><input type="checkbox" value="month"> Month</label><label><input type="checkbox" value="todo"> To Do</label><label><input type="checkbox" value="reports"> Reports</label>
+      <span class="hint">Tracker is always visible.</span></fieldset>
+    <fieldset class="pset usual" id="p-usual"><legend>"Log my usual day" button</legend>
+      <span class="hint">Set up to two blocks. Leave both empty to hide the button.</span>
+      <div class="urow"><select id="p-u0-loc" aria-label="Block 1 location"><option value="">None</option><option value="Office">Office</option><option value="Home">WFH</option><option value="Field work">Field work</option><option value="Break">Break</option></select><input type="time" id="p-u0-s" step="60" aria-label="Block 1 from"><span>to</span><input type="time" id="p-u0-e" step="60" aria-label="Block 1 to"></div>
+      <div class="urow"><select id="p-u1-loc" aria-label="Block 2 location"><option value="">None</option><option value="Office">Office</option><option value="Home">WFH</option><option value="Field work">Field work</option><option value="Break">Break</option></select><input type="time" id="p-u1-s" step="60" aria-label="Block 2 from"><span>to</span><input type="time" id="p-u1-e" step="60" aria-label="Block 2 to"></div>
+    </fieldset>
+    <p class="hint" id="p-msg" role="status"></p>
+    <div class="foot"><span></span><div style="display:flex;gap:8px"><button class="btn" id="perm-cancel" type="button">Cancel</button><button class="btn primary" id="p-save" type="submit">Save</button></div></div>
+  </form>
+</div>
 <div class="scrim" id="editor" hidden>
   <form class="sheet" id="e-form" autocomplete="off">
     <h2>Edit time entry</h2>
@@ -460,6 +490,6 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0639"></script>
+<script src="app.js?v=20261016-0642"></script>
 </body>
 </html>

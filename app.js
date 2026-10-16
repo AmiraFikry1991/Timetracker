@@ -16,7 +16,19 @@ const normLoc=l=>l==='Out of office'?'Field work':l==='Time off'?'Annual leave':
 const LOCVAR={'Office':'var(--office)','Home':'var(--home)','Field work':'var(--field)','Break':'var(--break)'};
 const isBreak=l=>l==='Break';
 const LOCLBL={'Home':'WFH'};
-const WFH_ALLOWED=['amira.fikry.mahmoud@gmail.com']; // only these people get the WFH and Field work options and "Log my usual day"const locLabel=l=>LOCLBL[l]||l;
+const locLabel=l=>LOCLBL[l]||l;
+// Permissions. Admins set these per person on the Team page; these are the fallbacks when nothing is set.
+const ALL_LOCS=['Office','Home','Field work','Break'];
+const ALL_TABS=['dayview','calendar','month','todo','reports'];
+const TAB_LBL={dayview:'Day',calendar:'Week',month:'Month',todo:'To Do',reports:'Reports'};
+const OWNER_EMAILS=['amira.fikry.mahmoud@gmail.com'];
+const OWNER_USUAL=[{loc:'Office',start:'11:00',end:'18:00'},{loc:'Home',start:'23:00',end:'00:00'}];
+function permsFor(row){
+  const s=(row&&row.settings)||{},email=((row&&row.email)||'').toLowerCase(),owner=OWNER_EMAILS.includes(email);
+  return {locations:Array.isArray(s.locations)?s.locations:(owner?ALL_LOCS.slice():['Office','Break']),
+          tabs:Array.isArray(s.tabs)?s.tabs:ALL_TABS.slice(),
+          usual:Array.isArray(s.usual)?s.usual:(owner?OWNER_USUAL:[])};
+}
 const toMin=t=>{const[a,b]=t.split(':').map(Number);return a*60+b;};
 const spanMin=e=>{if(!e.start||!e.end) return null;const s=toMin(e.start);let x=toMin(e.end);if(x<=s) x+=1440;return [s,x];};
 function breakOverlapH(e){const w=spanMin(e);if(!w) return 0;let m=0;
@@ -281,13 +293,48 @@ function renderTeam(){
   const byEmail={};state.profiles.forEach(p=>byEmail[p.email]=p);
   const emails=new Set([...state.invites.map(i=>i.email),...state.profiles.map(p=>p.email)]);
   const rows=[...emails].map(em=>{const inv=state.invites.find(i=>i.email===em),p=byEmail[em];
-    const name=(p&&p.full_name)||(inv&&inv.full_name)||em;const src=inv||p||{};const role=src.is_admin?'admin':src.can_view_all?'viewer':'member';const admin=role==='admin';
+    const name=(p&&p.full_name)||(inv&&inv.full_name)||em;const src=inv||p||{};const role=src.is_admin?'admin':src.can_view_all?'viewer':'member';
     const status=p&&!p.active?'off':!inv?'off':p?'on':'wait';
-    return {em,name,admin,role,status,p};}).sort((a,b)=>a.name.localeCompare(b.name));
-  $('#team-list').innerHTML=rows.length?rows.map(x=>`<div class="person-row"><div><b>${esc(x.name)}${x.p&&x.p.id===state.uid?' (you)':''}</b><span class="e">${esc(x.em)}</span></div>
-    ${x.p&&x.p.id===state.uid?'<span class="badge">Admin</span>':x.status==='off'?'<span class="badge off">Removed</span>':`<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${x.status==='wait'?'<span class="badge wait">Invited</span>':''}<select data-role="${esc(x.em)}" aria-label="Role for ${esc(x.name)}"><option value="member"${x.role==='member'?' selected':''}>Member</option><option value="viewer"${x.role==='viewer'?' selected':''}>Viewer</option><option value="admin"${x.role==='admin'?' selected':''}>Admin</option></select></span>`}
-    <span class="acts2">${x.p&&x.p.id===state.uid?'':x.status==='off'?`<button class="btn" type="button" data-reinvite="${esc(x.em)}" data-name="${esc(x.name)}">Restore access</button>`:`${x.status==='wait'?`<button class="btn" type="button" data-resend="${esc(x.em)}">Resend link</button>`:''}<button class="btn danger" type="button" data-remove="${esc(x.em)}">Remove</button>`}</span></div>`).join(''):'<p class="hint">No one invited yet.</p>';
+    return {em,name,role,status,p,inv};}).sort((a,b)=>a.name.localeCompare(b.name));
+  const RL={admin:'Admin',viewer:'Viewer',member:'Member'};
+  $('#team-list').innerHTML=rows.length?rows.map(x=>{const me=x.p&&x.p.id===state.uid;
+    return `<div class="person-row"><div><b>${esc(x.name)}${me?' (you)':''}</b><span class="e">${esc(x.em)}</span></div>
+    <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${x.status==='off'?'<span class="badge off">Removed</span>':`${x.status==='wait'?'<span class="badge wait">Invited</span>':''}<span class="badge">${RL[x.role]}</span>`}</span>
+    <span class="acts2">${x.status==='off'?`<button class="btn" type="button" data-reinvite="${esc(x.em)}" data-name="${esc(x.name)}">Restore access</button>`:`<button class="btn" type="button" data-perms="${esc(x.em)}">Permissions</button>${me?'':`${x.status==='wait'?`<button class="btn" type="button" data-resend="${esc(x.em)}">Resend link</button>`:''}<button class="btn danger" type="button" data-remove="${esc(x.em)}">Remove</button>`}`}</span></div>`;}).join(''):'<p class="hint">No one invited yet.</p>';
 }
+/* ---------- permissions editor (admins) ---------- */
+let permEmail=null;
+function openPerms(em){
+  const p=state.profiles.find(x=>x.email===em),inv=state.invites.find(x=>x.email===em),src=p||inv||{email:em};
+  const merged={...src,settings:(p&&p.settings&&Object.keys(p.settings).length?p.settings:(inv&&inv.settings))||{},email:em};
+  const pr=permsFor(merged),role=src.is_admin?'admin':src.can_view_all?'viewer':'member',me=p&&p.id===state.uid;
+  permEmail=em;$('#p-who').textContent=(p&&p.full_name)||(inv&&inv.full_name)||em;
+  $('#p-role').value=role;$('#p-role').disabled=!!me;$('#p-role-note').hidden=!me;
+  document.querySelectorAll('#p-locs input').forEach(c=>c.checked=pr.locations.includes(c.value));
+  document.querySelectorAll('#p-tabs input').forEach(c=>c.checked=pr.tabs.includes(c.value));
+  [0,1].forEach(i=>{const u=pr.usual[i]||{};$('#p-u'+i+'-loc').value=u.loc||'';$('#p-u'+i+'-s').value=u.start||'';$('#p-u'+i+'-e').value=u.end||'';});
+  $('#p-msg').textContent='';$('#perm').hidden=false;
+}
+$('#perm-cancel').onclick=()=>{$('#perm').hidden=true;};
+$('#perm').addEventListener('click',e=>{if(e.target.id==='perm') $('#perm').hidden=true;});
+$('#perm-form').addEventListener('submit',async ev=>{
+  ev.preventDefault();const em=permEmail;if(!em) return;
+  const locations=[...document.querySelectorAll('#p-locs input:checked')].map(c=>c.value);
+  if(!locations.length){$('#p-msg').textContent='Pick at least one place they can log time.';return;}
+  const tabs=[...document.querySelectorAll('#p-tabs input:checked')].map(c=>c.value);
+  const usual=[0,1].map(i=>({loc:$('#p-u'+i+'-loc').value,start:$('#p-u'+i+'-s').value,end:$('#p-u'+i+'-e').value})).filter(u=>u.loc&&u.start&&u.end);
+  const role=$('#p-role').value,patch={settings:{locations,tabs,usual}};
+  if(!$('#p-role').disabled){patch.is_admin=role==='admin';patch.can_view_all=role!=='member';}
+  $('#p-save').disabled=true;$('#p-msg').textContent='Saving...';
+  const a=await sb.from('allowed_emails').update(patch).eq('email',em);
+  const b=await sb.from('profiles').update(patch).eq('email',em);
+  $('#p-save').disabled=false;
+  const err=a.error||b.error;
+  if(err){$('#p-msg').textContent=/settings/.test(err.message)?'Permissions need a one-time database update first (supabase/permissions.sql).':'That did not save: '+err.message;return;}
+  $('#perm').hidden=true;await loadPeople();
+  if(em===((state.profiles.find(p=>p.id===state.uid)||{}).email)) applyPerms(permsFor({email:em,settings:patch.settings}));
+  showBanner('Permissions saved. They apply the next time that person opens or refreshes TaDay.');
+});
 async function sendLink(email){const{error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});return error;}
 $('#invite').addEventListener('submit',async ev=>{
   ev.preventDefault();const name=$('#i-name').value.trim(),email=$('#i-email').value.trim().toLowerCase(),role=$('#i-role').value,admin=role==='admin',viewer=role!=='member';const msg=$('#i-msg');
@@ -306,6 +353,7 @@ document.addEventListener('click',async e=>{
   if(rm){if(rm.dataset.sure!=='1'){rm.dataset.sure='1';rm.textContent='Click again to remove';return;}
     const em=rm.dataset.remove;rm.disabled=true;
     await sb.from('allowed_emails').delete().eq('email',em);await sb.from('profiles').update({active:false}).eq('email',em);await loadPeople();return;}
+  const pm=e.target.closest('[data-perms]');if(pm){openPerms(pm.dataset.perms);return;}
   const rs=e.target.closest('[data-resend]');
   if(rs){rs.disabled=true;const er=await sendLink(rs.dataset.resend);rs.textContent=er?'Could not send':'Link sent';return;}
   const ri=e.target.closest('[data-reinvite]');
@@ -464,8 +512,8 @@ $('#usual').onclick=async()=>{
   const mine=allEntries().filter(x=>x.uid===state.uid&&x.date===date);
   if(mine.some(x=>isLeave(normLoc(x.location)))){showBanner('That day is marked as leave or a holiday. Remove that entry first if you worked.');return;}
   const add=[];const now=Date.now();
-  if(!mine.some(x=>normLoc(x.location)==='Office'&&x.start==='11:00')) add.push({id:newId(),date,task:'Office hours',project:'',notes:'',hours:7,location:'Office',start:'11:00',end:'18:00',created:now});
-  if(!mine.some(x=>normLoc(x.location)==='Home'&&x.start==='23:00')) add.push({id:newId(),date,task:'WFH hours',project:'',notes:'',hours:1,location:'Home',start:'23:00',end:'00:00',created:now+1});
+  (state.perms&&state.perms.usual||[]).forEach((u,i)=>{if(!u.start||!u.end||mine.some(x=>normLoc(x.location)===u.loc&&x.start===u.start)) return;
+    add.push({id:newId(),date,task:(locLabel(u.loc))+' hours',project:'',notes:'',hours:exactH(u.start,u.end),location:u.loc,start:u.start,end:u.end,created:now+i});});
   if(!add.length){showBanner('Your usual day is already logged for '+dayLabel(date).toLowerCase()+'.');return;}
   try{await addEntries(add);$('#banner').hidden=true;state.anchor=parse(date);render();}catch(e){showBanner('That did not save. Try again.');}
 };
@@ -480,6 +528,16 @@ function greet(){const n=new Date(),h=n.getHours();const g=h<5?'Working late':h<
   $('#greet').innerHTML=g+', <em>'+esc(state.vname||'there')+'</em>';
   $('#today-line').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+n.getDate()+' '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getFullYear();}
 greet();setInterval(greet,60000);
+/* ---------- permissions (apply to me) ---------- */
+function applyPerms(p){
+  state.perms=p;
+  ['#t-loc','#e-loc'].forEach(sel=>{$(sel).querySelectorAll('option').forEach(o=>{const v=o.value||o.textContent;if(ALL_LOCS.includes(v)) o.hidden=o.disabled=!p.locations.includes(v);});
+    $(sel).querySelectorAll('optgroup').forEach(g=>{g.hidden=![...g.querySelectorAll('option')].some(o=>!o.hidden);});
+    const first=[...$(sel).querySelectorAll('option')].find(o=>!o.hidden);if($(sel).selectedOptions[0]&&$(sel).selectedOptions[0].hidden&&first) $(sel).value=first.value||first.textContent;});
+  document.querySelectorAll('.navbtn').forEach(b=>{if(ALL_TABS.includes(b.dataset.tab)) b.hidden=!p.tabs.includes(b.dataset.tab);});
+  if(ALL_TABS.includes(state.tab)&&!p.tabs.includes(state.tab)) state.tab='tracker';
+  $('#usual').hidden=!p.usual.length;
+}
 /* ---------- sign in ---------- */
 function showLogin(msg){$('#app').hidden=true;$('#login').hidden=false;if(msg) $('#login-msg').textContent=msg;}
 $('#login-form').addEventListener('submit',async ev=>{
@@ -506,7 +564,7 @@ async function boot(session){
   const{data:me}=await sb.from('profiles').select('*').eq('id',state.uid).maybeSingle();
   if(!me||!me.active){booted=false;await sb.auth.signOut();showLogin('Your access to TaDay is not active. Ask your admin to invite you again.');return;}
   state.isAdmin=!!me.is_admin;
-  if(!WFH_ALLOWED.includes((me.email||'').toLowerCase())){document.querySelectorAll('#t-loc option[value="Home"],#e-loc option[value="Home"],#t-loc option[value="Field work"],#e-loc option[value="Field work"]').forEach(o=>o.remove());$('#usual').hidden=true;}state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
+  applyPerms(permsFor(me));state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
   $('#who-line').textContent=me.full_name||me.email;$('#nav-team').hidden=!state.isAdmin;
   $('#login').hidden=true;$('#app').hidden=false;greet();
   const t=await sb.from('timers').select('*').eq('user_id',state.uid).maybeSingle();state.timer=timerFromRow(t.data);
