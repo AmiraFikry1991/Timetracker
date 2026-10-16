@@ -54,7 +54,19 @@ const spanMin=e=>{if(!e.start||!e.end) return null;const s=toMin(e.start);let x=
 function breakOverlapH(e){const w=spanMin(e);if(!w) return 0;let m=0;
   for(const b of state.rows.values()){if(b.uid!==e.uid||b.date!==e.date||!isBreak(b.location)) continue;const s=spanMin(b);if(!s) continue;m+=Math.max(0,Math.min(w[1],s[1])-Math.max(w[0],s[0]));}
   return m/60;}
-const workH=e=>(isBreak(e.location)||isLeave(e.location))?0:Math.max(0,(+e.hours||0)-breakOverlapH(e));
+// Worked time for one entry: overlaps with breaks and with earlier entries the same day are not counted again.
+function subtractSeg(segs,a,b){const out=[];segs.forEach(([s,e])=>{if(b<=s||a>=e){out.push([s,e]);return;}if(a>s) out.push([s,a]);if(b<e) out.push([b,e]);});return out;}
+function workH(e){
+  if(isBreak(e.location)||isLeave(e.location)) return 0;
+  const w=spanMin(e);if(!w) return +e.hours||0;
+  let segs=[w];
+  for(const o of state.rows.values()){
+    if(o===e||o.id===e.id||o.uid!==e.uid||o.date!==e.date||isLeave(o.location)) continue;
+    const s=spanMin(o);if(!s) continue;
+    if(isBreak(o.location)||s[0]<w[0]||(s[0]===w[0]&&(s[1]>w[1]||(s[1]===w[1]&&o.id<e.id)))) segs=subtractSeg(segs,s[0],s[1]);
+  }
+  return segs.reduce((a,[s,x])=>a+(x-s),0)/60;
+}
 const PCOL=['#5E82C2','#4F9A7C','#C06A90','#A47C3E','#7E6BC4','#C97A62','#4A8EA3','#7F8C45'];
 const pcol=p=>{let h=0;for(const c of p) h=(h*31+c.charCodeAt(0))>>>0;return PCOL[h%PCOL.length]};
 const spanH=(s,e)=>{if(!s||!e) return null;const[a,b]=s.split(':').map(Number),[c,d]=e.split(':').map(Number);let m=(c*60+d)-(a*60+b);if(m<=0) m+=1440;return Math.round(m/60*100)/100};
@@ -266,6 +278,15 @@ function renderTracker(list,showWho){
         <span class="acts">${mine&&!lvE?`<button type="button" data-play="${esc(e.id)}" data-date="${esc(e.date)}" aria-label="Continue this task" title="Continue">${ICON_PLAY}</button>`:''}${mine?`<button type="button" data-edit="${esc(e.id)}" data-date="${esc(e.date)}" aria-label="Edit entry" title="Edit">${ICON_EDIT}</button>`:''}</span></div>`;}).join('')+`</div>`;
   }).join('');
 }
+/* side-by-side layout for overlapping entries (like a calendar app) */
+function layoutLanes(es){
+  const items=es.map(e=>{const s=spanMin(e);return {id:e.id,s:s[0],e:s[1]};}).sort((a,b)=>a.s-b.s||b.e-a.e);
+  const out=new Map();let cluster=[],clusterEnd=-1;
+  const flush=()=>{if(!cluster.length) return;const lanes=[];cluster.forEach(it=>{let k=lanes.findIndex(end=>end<=it.s);if(k<0){k=lanes.length;lanes.push(it.e);}else lanes[k]=it.e;it.lane=k;});
+    cluster.forEach(it=>out.set(it.id,{lane:it.lane,n:lanes.length}));cluster=[];};
+  items.forEach(it=>{if(it.s>=clusterEnd){flush();clusterEnd=it.e;}else clusterEnd=Math.max(clusterEnd,it.e);cluster.push(it);});
+  flush();return out;
+}
 function renderCal(list,showWho,r){
   const days=state.tab==='dayview'?[r[0]]:weekDays(r[0]);const n=days.length;const PX=state.tab==='dayview'?56:40;
   const timed=list.filter(e=>e.start&&e.end&&!isLeave(e.location));
@@ -281,12 +302,14 @@ function renderCal(list,showWho,r){
     let c=`<div class="col${lv?' leave':''}${isWeekendDate(d)?' wk':''}" data-day="${ds}" style="height:${H}px">`;
     for(let x=1;x<hi-lo;x++) c+=`<div class="line" style="top:${x*PX}px"></div>`;
     if(!showWho&&daySched(subjectUid(),ds,es)) schedBlocks(subjectUid()).forEach(b=>{let s0=toMin(b.start),e0=toMin(b.end);if(e0<=s0) e0+=1440;const top=(s0/60-lo)*PX,bot=Math.min(e0/60,hi)-lo;const ht=bot*PX-top;if(ht>0) c+=`<div class="offband" style="top:${top}px;height:${ht}px"><span>Official</span></div>`;});
+    const lay=layoutLanes(es.filter(e=>e.start&&e.end&&!isLeave(e.location)&&!isBreak(e.location)));
     es.forEach(e=>{
       if(isLeave(e.location)){c+=`<div class="blk leave">${esc(e.location)}</div>`;return;}
       if(!e.start||!e.end) return;
       const[sh,sm]=e.start.split(':').map(Number);let top=((sh+sm/60)-lo)*PX;let ht=Math.max(18,(+e.hours||0)*PX);
       if(top+ht>H) ht=H-top;
-      c+=`<button type="button" class="blk${isBreak(e.location)?' brk':''}" style="top:${top}px;height:${ht}px;--lc:${LOCVAR[e.location]||'var(--office)'}" ${e.uid===state.uid?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(e.task)} ${esc(e.start)} to ${esc(e.end)}"><b>${esc(e.task)}</b>${esc(e.start)} - ${esc(e.end)}${showWho?' · '+esc(nameOf(e.uid)):''}${n===1&&e.project?' · '+esc(e.project):''}${n===1&&e.notes?'<br>'+esc(e.notes):''}</button>`;
+      const L=lay.get(e.id),pos=L&&L.n>1?`left:calc(${(L.lane/L.n*100).toFixed(3)}% + 2px);width:calc(${(100/L.n).toFixed(3)}% - 4px);right:auto;`:'';
+      c+=`<button type="button" class="blk${isBreak(e.location)?' brk':''}${L&&L.n>1?' lane':''}" style="${pos}top:${top}px;height:${ht}px;--lc:${LOCVAR[e.location]||'var(--office)'}" ${e.uid===state.uid?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(e.task)} ${esc(e.start)} to ${esc(e.end)}"><b>${esc(e.task)}</b>${esc(e.start)} - ${esc(e.end)}${showWho?' · '+esc(nameOf(e.uid)):''}${n===1&&e.project?' · '+esc(e.project):''}${n===1&&e.notes?'<br>'+esc(e.notes):''}</button>`;
     });
     if(ds===t){const now=new Date();const y=((now.getHours()+now.getMinutes()/60)-lo)*PX;if(y>=0&&y<=H) c+=`<div class="now" style="top:${y}px"></div>`;}
     cols+=c+'</div>';}

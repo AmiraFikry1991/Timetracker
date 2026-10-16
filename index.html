@@ -214,7 +214,8 @@ td.r{text-align:right;font-family:var(--f-mono)}
 .hcell small.of{font-family:var(--f-body);color:var(--muted);font-weight:500}
 .offband{position:absolute;left:2px;right:2px;border:1.5px dashed #9CB8DA;border-radius:6px;background:rgba(156,184,218,.08);pointer-events:none;z-index:0}
 .offband span{position:absolute;right:6px;top:2px;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7FA6D6}
-.blk{z-index:1}
+.blk{z-index:1;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start}
+.blk.lane{border:1px solid var(--surface)}
 .mc .h.met{color:#2E6B4A;font-weight:600}
 .mc .h.under{color:#B5574A;font-weight:600}
 .hello-r{display:flex;align-items:center;gap:12px}
@@ -365,7 +366,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0713"></script>
+<script src="config.js?v=20261016-0719"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -400,7 +401,7 @@ td.r{text-align:right;font-family:var(--f-mono)}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:13</small></div>
+    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:19</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -629,6 +630,6 @@ td.r{text-align:right;font-family:var(--f-mono)}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0713"></script>
+<script src="app.js?v=20261016-0719"></script>
 </body>
 </html>
