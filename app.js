@@ -681,6 +681,30 @@ $('#login-form').addEventListener('submit',async ev=>{
   if(!error){$('#codebox').hidden=false;}
   $('#login-msg').textContent=error?(/invite|database error/i.test(error.message)?'This email has not been invited yet. Ask your admin to invite you.':(/rate limit/i.test(error.message)?'Too many sign-in emails were sent in the last hour. Wait a little and try again, or use the 6-digit code from an email you already received (it works for about an hour).':'Could not send the link: '+error.message)):'Check your inbox. Tap the link in the email, or type the code from it below. (On a phone app, use the code.)';
 });
+$('#l-pw-toggle').onclick=()=>{const b=$('#pwbox');b.hidden=!b.hidden;if(!b.hidden) $('#l-pw').focus();};
+$('#l-pw-go').onclick=async()=>{
+  const email=$('#l-email').value.trim().toLowerCase(),password=$('#l-pw').value;
+  if(!email){$('#login-msg').textContent='Type your email above first.';$('#l-email').focus();return;}
+  if(!password) return;
+  $('#l-pw-go').disabled=true;$('#login-msg').textContent='Signing in...';
+  const{error}=await sb.auth.signInWithPassword({email,password});
+  $('#l-pw-go').disabled=false;
+  if(error) $('#login-msg').textContent=/invalid/i.test(error.message)?'That email and password do not match. If you have not set a password yet, sign in with an email link or code first.':'Could not sign in: '+error.message;
+};
+$('#l-pw').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#l-pw-go').click();}});
+$('#setpw').onclick=()=>{$('#pwset-form').reset();$('#pw-msg').textContent='';$('#pwset').hidden=false;$('#pw1').focus();};
+$('#pw-cancel').onclick=()=>{$('#pwset').hidden=true;};
+$('#pwset').addEventListener('click',e=>{if(e.target.id==='pwset') $('#pwset').hidden=true;});
+$('#pwset-form').addEventListener('submit',async ev=>{
+  ev.preventDefault();const a=$('#pw1').value,b=$('#pw2').value;
+  if(a.length<8){$('#pw-msg').textContent='Use at least 8 characters.';return;}
+  if(a!==b){$('#pw-msg').textContent='The two passwords do not match.';return;}
+  $('#pw-save').disabled=true;$('#pw-msg').textContent='Saving...';
+  const{error}=await sb.auth.updateUser({password:a});
+  $('#pw-save').disabled=false;
+  if(error){$('#pw-msg').textContent='That did not save: '+error.message;return;}
+  $('#pwset').hidden=true;toast('Password saved. You can now sign in with your email and password.');
+});
 $('#l-verify').onclick=async()=>{
   const email=$('#l-email').value.trim().toLowerCase(),token=$('#l-code').value.replace(/\s/g,'');if(!email||!token) return;
   $('#l-verify').disabled=true;$('#login-msg').textContent='Checking...';
