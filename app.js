@@ -98,7 +98,7 @@ async function loadPeople(){
   fillPeople();render();
 }
 function showBanner(t){const b=$('#banner');b.textContent=t;b.hidden=false;}
-function guard(){if(!state.canWrite){showBanner('Your access to this timesheet has been turned off. Ask Amira if you think this is a mistake.');return false;}return true;}
+function guard(){if(!state.canWrite){showBanner('Your access to TaDay has been turned off. Ask your admin if you think this is a mistake.');return false;}return true;}
 
 /* ---------- timer ---------- */
 async function setTimer(t){state.timer=t;paintTimer();
@@ -477,7 +477,7 @@ $('#export').onclick=async()=>{
 };
 
 function greet(){const n=new Date(),h=n.getHours();const g=h<5?'Working late':h<12?'Good morning':h<17?'Good afternoon':'Good evening';
-  $('#greet').innerHTML=g+', <em>'+esc(state.vname||'Amira')+'</em>';
+  $('#greet').innerHTML=g+', <em>'+esc(state.vname||'there')+'</em>';
   $('#today-line').textContent=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n.getDay()]+', '+n.getDate()+' '+['January','February','March','April','May','June','July','August','September','October','November','December'][n.getMonth()]+' '+n.getFullYear();}
 greet();setInterval(greet,60000);
 /* ---------- sign in ---------- */
@@ -488,7 +488,7 @@ $('#login-form').addEventListener('submit',async ev=>{
   const{error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});
   $('#l-go').disabled=false;
   if(!error){$('#codebox').hidden=false;}
-  $('#login-msg').textContent=error?(/invite|database error/i.test(error.message)?'This email has not been invited yet. Ask Amira to invite you.':'Could not send the link: '+error.message):'Check your inbox. Tap the link in the email, or type the code from it below. (On a phone app, use the code.)';
+  $('#login-msg').textContent=error?(/invite|database error/i.test(error.message)?'This email has not been invited yet. Ask your admin to invite you.':'Could not send the link: '+error.message):'Check your inbox. Tap the link in the email, or type the code from it below. (On a phone app, use the code.)';
 });
 $('#l-verify').onclick=async()=>{
   const email=$('#l-email').value.trim().toLowerCase(),token=$('#l-code').value.replace(/\s/g,'');if(!email||!token) return;
@@ -504,7 +504,7 @@ async function boot(session){
   if(booted) return;booted=true;
   state.uid=session.user.id;
   const{data:me}=await sb.from('profiles').select('*').eq('id',state.uid).maybeSingle();
-  if(!me||!me.active){booted=false;await sb.auth.signOut();showLogin('Your access to this timesheet is not active. Ask Amira to invite you again.');return;}
+  if(!me||!me.active){booted=false;await sb.auth.signOut();showLogin('Your access to TaDay is not active. Ask your admin to invite you again.');return;}
   state.isAdmin=!!me.is_admin;
   if(!WFH_ALLOWED.includes((me.email||'').toLowerCase())){document.querySelectorAll('#t-loc option[value="Home"],#e-loc option[value="Home"],#t-loc option[value="Field work"],#e-loc option[value="Field work"]').forEach(o=>o.remove());$('#usual').hidden=true;}state.canViewAll=!!(me.is_admin||me.can_view_all);state.vname=(me.full_name||me.email).trim().split(/\s+/)[0];
   $('#who-line').textContent=me.full_name||me.email;$('#nav-team').hidden=!state.isAdmin;
