@@ -29,7 +29,7 @@ html,body{margin:0;height:100%}
   --accent:#4F82C0; --accent-ink:#FFFFFF; --accent-soft:#E5EFFA; --stop:#D9667A;
   --gold:#3D5F8F; --gold-soft:#EAF1FA; --f-script:"Pinyon Script","Snell Roundhand","Apple Chancery",cursive;
   --rail:#EAF3FC; --rail-ink:#2E3A4E; --rail-muted:#6A819F; --rail-hover:#DAE8F7;
-  --office:#D3E5F7; --home:#FBE1DB; --field:#DFF2E5; --break:#FFF1C7; --weekend:#F5F1FB; --weekend-chip:#E9E0F7; --leave-bg:#F5F4F7; --leave-ink:#8E889C; --on-pastel:#2E3A4E; color-scheme:light;
+  --office:#D3E5F7; --home:#DCD3F5; --field:#DFF2E5; --break:#EDE1CC; --weekend:#F0F3F6; --weekend-chip:#DFE6EE; --leave-bg:#F5F4F7; --leave-ink:#8E889C; --on-pastel:#2E3A4E; color-scheme:light;
   --f-display:"DM Serif Display",Georgia,"Times New Roman",serif;
   --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -146,7 +146,7 @@ textarea{resize:vertical;min-height:70px;width:100%}
 .cal .line{position:absolute;left:0;right:0;border-top:1px solid var(--line);pointer-events:none}
 .blk{position:absolute;left:3px;right:3px;border-radius:3px;padding:3px 5px;font-size:.72rem;line-height:1.2;overflow:hidden;color:var(--on-pastel);background:var(--lc,var(--office));border:0;text-align:left;cursor:pointer}
 .blk b{display:block;font-weight:700}
-.blk.brk{z-index:2;left:14%;right:6px;border:1px dashed #E2C77A;box-shadow:0 2px 8px -4px rgba(46,58,78,.35)}
+.blk.brk{z-index:2;left:14%;right:6px;border:1px dashed #C7AE85;box-shadow:0 2px 8px -4px rgba(46,58,78,.35)}
 .blk.leave{background:var(--surface);color:var(--leave-ink);border:1px solid var(--line);font-weight:700;text-align:center;top:6px!important;height:auto!important}
 .now{position:absolute;left:0;right:0;border-top:2px solid var(--stop);pointer-events:none}
 
@@ -239,7 +239,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .g-legend{list-style:none;padding-left:0!important}
 .g-legend li{display:flex;gap:8px;align-items:baseline}
 .g-legend i{width:12px;height:12px;border-radius:3px;flex:none;transform:translateY(1px)}
-.wknd{display:inline-block;margin-left:6px;font-family:var(--f-body);font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7A5BA8;background:var(--weekend-chip);border-radius:99px;padding:1px 7px;vertical-align:2px}
+.wknd{display:inline-block;margin-left:6px;font-family:var(--f-body);font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#5D7389;background:var(--weekend-chip);border-radius:99px;padding:1px 7px;vertical-align:2px}
 .hcell .wknd{display:table;margin:0 auto 3px}
 .hcell.wk,.mh.wk{background:var(--weekend)}
 .cal .col.wk{background:var(--weekend)}
@@ -373,7 +373,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 @media (max-width:800px){.invite .inv-row{grid-template-columns:1fr}.person-row{grid-template-columns:1fr auto}.person-row .acts2{grid-column:1/-1;justify-content:flex-start}.signout{margin:0 0 0 8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=20261016-0730"></script>
+<script src="config.js?v=20261016-0736"></script>
 </head>
 <body>
 <div class="login-wrap" id="login" hidden>
@@ -415,7 +415,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
     <div class="spacer"></div>
     <div class="person"><span id="person-wrap" hidden><label for="person">Showing</label>
     <select id="person"><option value="me">My time</option><option value="all">Everyone</option></select></span>
-    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:30</small></div>
+    <small class="signedin" id="who-line"></small><button class="signout" id="signout" type="button">Sign out</button><small class="powered">Powered by <em>Amira Fikry</em></small><small class="ver" id="ver">Updated 16 Oct 2026, 07:36</small></div>
     <svg class="horizon" viewBox="0 0 220 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34 Q27 26 55 34 T110 34 T165 34 T220 34" fill="none" stroke="var(--gold)" stroke-width="1"/><path d="M0 48 Q27 40 55 48 T110 48 T165 48 T220 48" fill="none" stroke="var(--rail-muted)" stroke-width="1"/><path d="M0 62 Q27 54 55 62 T110 62 T165 62 T220 62" fill="none" stroke="var(--rail-muted)" stroke-width="1" opacity=".6"/></svg>
   </nav>
 
@@ -570,7 +570,7 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
         <li><b>Month:</b> the whole month with every task inside its day.</li>
         <li><b>Reports:</b> totals for the week or month, hours per day, and breakdowns by location, project, person and leave.</li>
       </ul>
-      <p>Weekend days are shaded lilac with a <span class="wknd" style="margin:0">Weekend</span> label. Use the arrows to move around and <b>Today</b> to jump back. <b>Export CSV</b> downloads what is on screen as a spreadsheet.</p>
+      <p>Weekend days are shaded pale gray-blue with a <span class="wknd" style="margin:0">Weekend</span> label. Use the arrows to move around and <b>Today</b> to jump back. <b>Export CSV</b> downloads what is on screen as a spreadsheet.</p>
     </section>
 
     <section id="g-hours"><h3>Official hours</h3>
@@ -664,6 +664,6 @@ body.is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="app.js?v=20261016-0730"></script>
+<script src="app.js?v=20261016-0736"></script>
 </body>
 </html>
