@@ -243,9 +243,10 @@ function render(){
   ['tracker','calendar','month','reports','team','todo','settings'].forEach(t=>$('#v-'+t).hidden=(state.tab==='dayview'?'calendar':state.tab)!==t);
   const side=state.tab==='team'||state.tab==='todo'||state.tab==='settings';
   $('.toolbar').hidden=side;$('.foot2').hidden=side;
-  if(state.tab==='team'){renderTeam();return;}
-  if(state.tab==='settings'){renderSettings();return;}
-  if(state.tab==='todo'){renderTodo();return;}
+  if(state.tab==='team'){renderTeam();$('#keyrow').hidden=true;return;}
+  if(state.tab==='settings'){renderSettings();$('#keyrow').hidden=true;return;}
+  renderKey();
+  if(state.tab==='todo'){renderTodo();$('#keyrow').hidden=true;return;}
   ensureLoaded();
   $('#rperiod').hidden=state.tab!=='reports';
   $('#tview').hidden=state.tab!=='tracker';
@@ -336,6 +337,16 @@ function renderMonth(list,showWho,r){
   }
   g.innerHTML=h;
   if(!list.length) g.insertAdjacentHTML('afterend','');
+}
+function renderKey(){
+  const k=$('#keyrow');k.hidden=false;
+  const locs=(state.canViewAll&&state.person!=='me')?ALL_LOCS:((state.perms&&state.perms.locations)||ALL_LOCS);
+  const sw=(cls,lc,txt)=>`<span class="k"><span class="sw ${cls}"${lc?` style="--lc:${lc}"`:''}></span>${txt}</span>`;
+  let h='<span class="lbl">Key</span>';
+  ALL_LOCS.filter(l=>locs.includes(l)).forEach(l=>{h+=sw(isBreak(l)?'brk':'',LOCVAR[l],esc(locLabel(l))+(isBreak(l)?' (not counted)':''));});
+  h+=sw('lv','', 'Leave or holiday')+sw('wk','','Weekend');
+  if(state.person!=='all'&&schedBlocks(subjectUid()).length) h+=sw('off','','Official hours');
+  k.innerHTML=h;
 }
 function renderTeam(){
   const byEmail={};state.profiles.forEach(p=>byEmail[p.email]=p);
