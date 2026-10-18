@@ -24,8 +24,8 @@ const TAB_LBL={dayview:'Day',calendar:'Week',month:'Month',todo:'To Do',reports:
 const OWNER_EMAILS=['amira.fikry.mahmoud@gmail.com'];
 const OWNER_USUAL=[{loc:'Office',start:'11:00',end:'18:00'},{loc:'Home',start:'23:00',end:'00:00'}];
 const DAYS_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const APP_DEFAULT={workDays:[0,1,2,3,4],weekStart:0,showWeekends:true,defaults:{locations:['Office','Break'],tabs:['dayview','calendar','month','todo','reports']}};
-function appCfg(){const a=state.app||{};const d=a.defaults||{};return {workDays:Array.isArray(a.workDays)&&a.workDays.length?a.workDays:APP_DEFAULT.workDays,weekStart:Number.isInteger(a.weekStart)?a.weekStart:APP_DEFAULT.weekStart,showWeekends:typeof a.showWeekends==='boolean'?a.showWeekends:APP_DEFAULT.showWeekends,defaults:{locations:Array.isArray(d.locations)?d.locations:APP_DEFAULT.defaults.locations,tabs:Array.isArray(d.tabs)?d.tabs:APP_DEFAULT.defaults.tabs}};}
+const APP_DEFAULT={workDays:[0,1,2,3,4],weekStart:0,showWeekends:true,officeFill:true,defaults:{locations:['Office','Break'],tabs:['dayview','calendar','month','todo','reports']}};
+function appCfg(){const a=state.app||{};const d=a.defaults||{};return {workDays:Array.isArray(a.workDays)&&a.workDays.length?a.workDays:APP_DEFAULT.workDays,weekStart:Number.isInteger(a.weekStart)?a.weekStart:APP_DEFAULT.weekStart,showWeekends:typeof a.showWeekends==='boolean'?a.showWeekends:APP_DEFAULT.showWeekends,officeFill:typeof a.officeFill==='boolean'?a.officeFill:APP_DEFAULT.officeFill,defaults:{locations:Array.isArray(d.locations)?d.locations:APP_DEFAULT.defaults.locations,tabs:Array.isArray(d.tabs)?d.tabs:APP_DEFAULT.defaults.tabs}};}
 const isWeekendDate=d=>!appCfg().workDays.includes(d.getDay());
 function weekStartOf(a){const ws=appCfg().weekStart;return addDays(a,-((a.getDay()-ws+7)%7));}
 function weekDays(start){const c=appCfg();const out=[];for(let i=0;i<7;i++){const d=addDays(start,i);if(c.showWeekends||c.workDays.includes(d.getDay())) out.push(d);}return out;}
@@ -65,6 +65,29 @@ function breakOverlapH(e){const w=spanMin(e);if(!w) return 0;let m=0;
   return m/60;}
 // Worked time for one entry: overlaps with breaks and with earlier entries the same day are not counted again.
 function subtractSeg(segs,a,b){const out=[];segs.forEach(([s,e])=>{if(b<=s||a>=e){out.push([s,e]);return;}if(a>s) out.push([s,a]);if(b<e) out.push([b,e]);});return out;}
+// Office days: time between your first and last Office entry that has nothing logged counts as Office work.
+// If your official hours include an Office block, the day stretches to its start and end when your first and
+// last Office entries are within an hour of them (for example arriving at 11:00 and logging the first task at 11:22).
+const FILL_TOL=60;
+const mm=m=>pad(Math.floor(m/60)%24)+':'+pad(m%60);
+function officeFill(list){
+  if(!appCfg().officeFill) return [];
+  const groups={};list.forEach(e=>{(groups[e.uid+'|'+e.date]=groups[e.uid+'|'+e.date]||[]).push(e);});
+  const out=[];
+  Object.values(groups).forEach(es=>{
+    if(es.some(e=>isLeave(e.location))) return;
+    const off=es.filter(e=>e.location==='Office').map(spanMin).filter(Boolean);if(!off.length) return;
+    let a=Math.min(...off.map(s=>s[0])),b=Math.max(...off.map(s=>s[1]));
+    const uid=es[0].uid,ds=es[0].date;
+    schedBlocks(uid).filter(x=>x.loc==='Office'&&x.start&&x.end).forEach(x=>{let s0=toMin(x.start),e0=toMin(x.end);if(e0<=s0) e0+=1440;
+      if(a>s0&&a-s0<=FILL_TOL&&a<e0) a=s0;if(b<e0&&e0-b<=FILL_TOL&&b>s0) b=e0;});
+    let gaps=[[a,b]];
+    es.forEach(e=>{const s=spanMin(e);if(s) gaps=subtractSeg(gaps,s[0],s[1]);});
+    gaps.filter(([s,x])=>x-s>=1).forEach(([s,x],i)=>out.push({id:'fill-'+uid+'-'+ds+'-'+i,uid,date:ds,task:'Office time',notes:'In the office between logged tasks',project:'',location:'Office',start:mm(s),end:mm(x),hours:Math.round((x-s)/60*100)/100,virtual:true}));
+  });
+  return out;
+}
+const withFill=list=>list.concat(officeFill(list));
 function workH(e){
   if(isBreak(e.location)||isLeave(e.location)) return 0;
   const w=spanMin(e);if(!w) return +e.hours||0;
@@ -270,7 +293,7 @@ function render(){
   $('#tview').hidden=state.tab!=='tracker';
   document.querySelectorAll('#tview button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tv===state.tview)));
   if(isDayMode()&&document.activeElement!==$('#t-date')) $('#t-date').value=iso(range()[0]);
-  const r=range(),list=inRange(visible(),r),showWho=state.person==='all';
+  const r=range(),list=withFill(inRange(visible(),r)),showWho=state.person==='all';
   const tw=iso(weekStartOf(new Date()));
   const wkLast=weekDays(r[0]).slice(-1)[0]||r[1];$('#plabel').textContent=(isDayMode())?dayLabel(iso(r[0])):(state.tab==='month'||(state.tab==='reports'&&state.rperiod==='month'))?(MN[r[0].getMonth()]+' '+r[0].getFullYear()):(iso(r[0])===tw?'This week':MN[r[0].getMonth()]+' '+r[0].getDate()+' to '+MN[wkLast.getMonth()]+' '+wkLast.getDate());
   $('#ptotal').textContent=dur(list.reduce((t,e)=>t+workH(e),0));
@@ -289,8 +312,8 @@ function renderTracker(list,showWho){
     const es=by[ds].slice().sort((a,b)=>(b.start||'')<(a.start||'')?-1:(b.start||'')>(a.start||'')?1:0);
     const tot=es.reduce((t,e)=>t+workH(e),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
     return `<div class="daygrp${lv?' leave':''}"><div class="dayhead${isWeekendDate(parse(ds))?' wk':''}"><span class="d">${dayLabel(ds)}${isWeekendDate(parse(ds))?WKND_CHIP:''}</span><span class="t">${lv&&!tot?'Day off':'Total'}<b>${lv&&!tot?'':dur(tot)}</b></span></div>${showWho?'':schedLine(subjectUid(),ds,es)}`+
-      es.map(e=>{const mine=e.uid===state.uid,lvE=isLeave(e.location);
-        return `<div class="row"><div class="desc"><b>${esc(e.task)}</b>${e.notes?`<span>${esc(e.notes)}</span>`:''}</div>
+      es.map(e=>{const mine=e.uid===state.uid&&!e.virtual,lvE=isLeave(e.location);
+        return `<div class="row${e.virtual?' fill':''}"><div class="desc"><b>${esc(e.task)}</b>${e.notes?`<span>${esc(e.notes)}</span>`:''}</div>
         <div class="tags">${projTag(e.project)}${locTag(e.location)}${showWho?`<span class="who">${esc(nameOf(e.uid))}</span>`:''}</div>
         <span class="span">${e.start&&e.end?esc(e.start)+' - '+esc(e.end):''}</span>
         <span class="dur">${lvE?'Off':dur(e.hours)}</span>
@@ -328,7 +351,7 @@ function renderCal(list,showWho,r){
       const[sh,sm]=e.start.split(':').map(Number);let top=((sh+sm/60)-lo)*PX;let ht=Math.max(18,(+e.hours||0)*PX);
       if(top+ht>H) ht=H-top;
       const L=lay.get(e.id),pos=L&&L.n>1?`left:calc(${(L.lane/L.n*100).toFixed(3)}% + 2px);width:calc(${(100/L.n).toFixed(3)}% - 4px);right:auto;`:'';
-      c+=`<button type="button" class="blk${isBreak(e.location)?' brk':''}${L&&L.n>1?' lane':''}" style="${pos}top:${top}px;height:${ht}px;--lc:${LOCVAR[e.location]||'var(--office)'}" ${e.uid===state.uid?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(e.task)} ${esc(e.start)} to ${esc(e.end)}${e.uid===state.uid?' (drag to move)':''}"><b>${esc(e.task)}</b><span class="tm">${esc(e.start)} - ${esc(e.end)}</span>${showWho?' · '+esc(nameOf(e.uid)):''}${n===1&&e.project?' · '+esc(e.project):''}${n===1&&e.notes?'<br>'+esc(e.notes):''}${e.uid===state.uid?'<span class="rz" aria-hidden="true"></span>':''}</button>`;
+      c+=`<button type="button" class="blk${isBreak(e.location)?' brk':''}${e.virtual?' fill':''}${L&&L.n>1?' lane':''}" style="${pos}top:${top}px;height:${ht}px;--lc:${LOCVAR[e.location]||'var(--office)'}" ${e.uid===state.uid&&!e.virtual?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(e.task)} ${esc(e.start)} to ${esc(e.end)}${e.virtual?' (counted automatically: you were in the office between tasks)':e.uid===state.uid?' (drag to move)':''}"><b>${esc(e.task)}</b><span class="tm">${esc(e.start)} - ${esc(e.end)}</span>${showWho?' · '+esc(nameOf(e.uid)):''}${n===1&&e.project?' · '+esc(e.project):''}${n===1&&e.notes?'<br>'+esc(e.notes):''}${e.uid===state.uid?'<span class="rz" aria-hidden="true"></span>':''}</button>`;
     });
     if(ds===t){const now=new Date();const y=((now.getHours()+now.getMinutes()/60)-lo)*PX;if(y>=0&&y<=H) c+=`<div class="now" style="top:${y}px"></div>`;}
     cols+=c+'</div>';}
@@ -348,8 +371,8 @@ function renderMonth(list,showWho,r){
       const tot=es.reduce((a,e)=>a+workH(e),0);const lv=!showWho&&es.some(e=>isLeave(e.location));
       const items=es.map(e=>{
         if(isLeave(e.location)) return `<span class="mt lv" title="${esc(e.notes||'')}">${esc(e.location)}</span>`;
-        const mine=e.uid===state.uid;const tip=[e.task,e.start&&e.end?e.start+' to '+e.end:'',e.project,e.notes].filter(Boolean).join(' | ');
-        return `<button type="button" class="mt${mine?'':' who'}" style="--lc:${LOCVAR[e.location]||'var(--office)'}" ${mine?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(tip)}">${esc(e.task)}<small>${dur(e.hours)}${showWho?' · '+esc(nameOf(e.uid)):''}</small></button>`;}).join('');
+        const mine=e.uid===state.uid&&!e.virtual;const tip=[e.task,e.start&&e.end?e.start+' to '+e.end:'',e.project,e.notes].filter(Boolean).join(' | ');
+        return `<button type="button" class="mt${e.virtual?' fill':mine?'':' who'}" style="--lc:${LOCVAR[e.location]||'var(--office)'}" ${mine?`data-edit="${esc(e.id)}" data-date="${esc(e.date)}"`:''} title="${esc(tip)}">${esc(e.task)}<small>${dur(e.hours)}${showWho?' · '+esc(nameOf(e.uid)):''}</small></button>`;}).join('');
       h+=`<div class="mc${ds===t?' today':''}${isWeekendDate(d)?' wk':''}${lv?' leave':''}${es.length?'':' empty-m'}" data-mday="${ds}"><div class="top"><span class="n">${d.getDate()}</span><span class="wd">${DN[d.getDay()]}${isWeekendDate(d)?' · Weekend':''}</span><span class="h${(()=>{const s=showWho?0:daySched(subjectUid(),ds,es);const cr=s?dayCredit(subjectUid(),ds,es).credit:0;return s&&tot?(cr+1/60>=s?' met':' under'):'';})()}">${tot?dur(tot):''}</span></div>${items}</div>`;
     }
   }
@@ -654,7 +677,7 @@ $('#usual').onclick=async()=>{
   try{await withFreshSession(()=>addEntries(add));$('#banner').hidden=true;state.anchor=parse(date);render();}catch(e){showBanner(whyFailed(e));}
 };
 $('#export').onclick=async()=>{
-  const r=range();const l=inRange(visible(),r).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.start||'')<(b.start||'')?-1:1);
+  const r=range();const l=withFill(inRange(visible(),r)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.start||'')<(b.start||'')?-1:1);
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   const csv=['Date,Person,Where,From,To,Project,Task,Notes,Hours',...l.map(e=>[e.date,nameOf(e.uid)==='You'?'Me':nameOf(e.uid),locLabel(e.location),e.start,e.end,e.project,e.task,e.notes,e.hours].map(q).join(','))].join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download='timesheet_'+iso(r[0])+'_to_'+iso(r[1])+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
@@ -672,7 +695,7 @@ function renderSettings(){
   const c=appCfg();
   $('#s-err').hidden=!state.appError;
   document.querySelectorAll('#s-days input').forEach(x=>x.checked=c.workDays.includes(+x.value));
-  $('#s-start').value=String(c.weekStart);$('#s-wknd').checked=c.showWeekends;
+  $('#s-start').value=String(c.weekStart);$('#s-wknd').checked=c.showWeekends;$('#s-fill').checked=c.officeFill;
   document.querySelectorAll('#s-locs input').forEach(x=>x.checked=c.defaults.locations.includes(x.value));
   document.querySelectorAll('#s-tabs input').forEach(x=>x.checked=c.defaults.tabs.includes(x.value));
   const RL={admin:'Admin',viewer:'Viewer',member:'Member'};
@@ -689,7 +712,7 @@ $('#settings-form').addEventListener('submit',async ev=>{
   const locations=[...document.querySelectorAll('#s-locs input:checked')].map(x=>x.value);
   if(!locations.length){$('#s-msg').textContent='Pick at least one default place to log time.';return;}
   const tabs=[...document.querySelectorAll('#s-tabs input:checked')].map(x=>x.value);
-  const data={workDays,weekStart:+$('#s-start').value,showWeekends:$('#s-wknd').checked,defaults:{locations,tabs}};
+  const data={workDays,weekStart:+$('#s-start').value,showWeekends:$('#s-wknd').checked,officeFill:$('#s-fill').checked,defaults:{locations,tabs}};
   $('#s-save').disabled=true;$('#s-msg').textContent='Saving...';
   const{error}=await sb.from('app_settings').upsert({id:1,data,updated_at:new Date().toISOString()});
   $('#s-save').disabled=false;
