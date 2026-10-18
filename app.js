@@ -123,6 +123,13 @@ async function ensureLoaded(){
 }
 async function refreshLoaded(){const mks=[...state.loaded];state.loaded.clear();await Promise.all(mks.map(fetchMonth));render();}
 function throwIf(error){if(error){const e=new Error(error.message);e.db=error;throw e;}}
+function whyFailed(err){const m=String((err&&(err.message||err))||'');console.error('TaDay save failed:',err);
+  if(/jwt|token|expired|not authenticated|401/i.test(m)) return 'Your sign-in expired. Refresh the page (or sign in again), then try once more.';
+  if(/row-level security|violates row|policy/i.test(m)) return 'TaDay would not accept that entry, usually because that location is not allowed for you. Pick another "Where" or ask your admin. ('+m+')';
+  if(/check constraint|hours/i.test(m)) return 'That entry has times TaDay cannot store (for example longer than 24 hours). Check the start and end times. ('+m+')';
+  if(/failed to fetch|network|load failed/i.test(m)) return 'That did not save because TaDay could not reach the server. Check your internet, then try again.';
+  return 'That did not save: '+m;}
+async function withFreshSession(fn){try{return await fn();}catch(e){if(/jwt|token|expired|401/i.test(String(e&&e.message))){await sb.auth.refreshSession();return await fn();}throw e;}}
 async function addEntries(list){
   list.forEach(e=>{e.uid=state.uid;state.rows.set(e.id,e);});render();
   const{error}=await sb.from('entries').insert(list.map(e=>({id:e.id,user_id:state.uid,...toRow(e)})));
@@ -178,14 +185,16 @@ function tick(){const t=state.timer&&state.timer.running?state.timer:null;
 setInterval(()=>{if(state.timer&&state.timer.running) tick();},1000);
 async function stopTimer(){
   const t=state.timer;if(!t||!t.running) return;
-  const st=new Date(t.startedAt),en=new Date();
-  const hours=Math.max(0.01,Math.round((en-st)/36e5*100)/100);
+  const st=new Date(t.startedAt);let en=new Date(),capped=false;
+  if(iso(en)!==iso(st)){en=new Date(st);en.setHours(23,59,0,0);capped=true;}
+  const hours=Math.min(24,Math.max(0.01,Math.round((en-st)/36e5*100)/100));
   const e={id:newId(),date:iso(st),task:($('#t-task').value.trim()||t.task||'Untitled'),project:$('#t-project').value.trim(),location:$('#t-loc').value,notes:$('#t-notes').value.trim(),start:hhmm(st),end:hhmm(en),hours,created:Date.now()};
-  await setTimer(null);await addEntry(e);clearBar();
+  await withFreshSession(()=>addEntry(e));await setTimer(null);clearBar();
+  if(capped) showBanner('That timer was still running from '+st.toLocaleDateString()+', so it was logged until 23:59 that day. Open the entry to fix the end time if needed.');
 }
 async function startTimer(task,project,location,notes){
   if(state.timer&&state.timer.running) await stopTimer();
-  await setTimer({running:true,startedAt:Date.now(),task,project,location,notes});
+  await withFreshSession(()=>setTimer({running:true,startedAt:Date.now(),task,project,location,notes}));
 }
 function clearBar(){$('#t-task').value='';$('#t-notes').value='';$('#t-project').value='';$('#t-loc').value='Office';syncManual();}
 
@@ -207,7 +216,7 @@ $('#timer').addEventListener('submit',async ev=>{
         const s=$('#t-start').value,e=$('#t-end').value,h=spanH(s,e);
         if(!h){showBanner('Add a start and end time to log this entry.');return;}
         if(!task){showBanner('Add a task name first, for example "Bank visit".');$('#t-task').focus();return;}
-        await addEntry({id:newId(),date,task,project,location,notes,start:s,end:e,hours:exactH(s,e),created:Date.now()});
+        await withFreshSession(()=>addEntry({id:newId(),date,task,project,location,notes,start:s,end:e,hours:exactH(s,e),created:Date.now()}));
       }
       $('#banner').hidden=true;state.anchor=parse(date);clearBar();
     }else{
@@ -215,7 +224,7 @@ $('#timer').addEventListener('submit',async ev=>{
       else{if(isLeave(location)){showBanner('Switch to manual mode (the list icon) to log leave or a holiday.');return;}
         await startTimer(task,project,location,notes);$('#banner').hidden=true;}
     }
-  }catch(err){showBanner('That did not save. Check your connection and try again.');}
+  }catch(err){showBanner(whyFailed(err));}
   finally{go.disabled=false;}
 });
 function syncManual(){
@@ -465,7 +474,7 @@ function renderTodo(){
 }
 let toastT=null;
 function toast(html){const el=$('#toast');el.innerHTML=html;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},3500);}
-async function todoWrite(fn,rollback){try{const{error}=await fn();if(error) throw error;}catch(e){rollback();renderTodo();showBanner('That change did not save. Try again.');}}
+async function todoWrite(fn,rollback){try{const{error}=await fn();if(error) throw error;}catch(e){rollback();renderTodo();showBanner(whyFailed(e));}}
 $('#todo-form').addEventListener('submit',async ev=>{
   ev.preventDefault();if(!guard()) return;const title=$('#td-title').value.trim();if(!title) return;const due=$('#td-due').value||null;
   const t={id:newId(),user_id:state.uid,title,due_date:due,done:false,done_at:null,created_at:new Date().toISOString()};
@@ -559,7 +568,7 @@ $('#e-form').addEventListener('submit',async ev=>{
     start:lv?'':$('#e-start').value,end:lv?'':$('#e-end').value,hours:lv?0:(exactH($('#e-start').value,$('#e-end').value)||parseFloat($('#e-hours').value)||0)};
   if(!ch.task||!ch.date) return;if(!lv&&!(ch.hours>0)){$('#e-mins').focus();return;}
   closeEditor();
-  try{await updateEntry(id,ch);}catch(e){showBanner('Your changes did not save. Try again.');}
+  try{await updateEntry(id,ch);}catch(e){showBanner(whyFailed(e));}
 });
 
 /* ---------- drag and drop in Day / Week ---------- */
@@ -608,7 +617,7 @@ $('#e-form').addEventListener('submit',async ev=>{
     if(start===x.e.start&&end===x.e.end&&x.day===x.e.date){render();return;}
     try{await updateEntry(x.e.id,{date:x.day,start,end,hours:exactH(start,end)});
       toast(`Moved <b>${esc(x.e.task)}</b> to ${esc(start)} - ${esc(end)}${x.day!==x.e.date?' on '+esc(dayLabel(x.day)):''}`);}
-    catch(err){showBanner('That move did not save. Try again.');render();}
+    catch(err){showBanner(whyFailed(err));render();}
   }
   window.addEventListener('pointerup',finish);
   window.addEventListener('pointercancel',ev=>{if(d&&d.active) finish(ev);else{if(d) clearTimeout(d.timer);d=null;}});
@@ -642,7 +651,7 @@ $('#usual').onclick=async()=>{
   (state.perms&&state.perms.usual||[]).forEach((u,i)=>{if(!u.start||!u.end||mine.some(x=>normLoc(x.location)===u.loc&&x.start===u.start)) return;
     add.push({id:newId(),date,task:(locLabel(u.loc))+' hours',project:'',notes:'',hours:exactH(u.start,u.end),location:u.loc,start:u.start,end:u.end,created:now+i});});
   if(!add.length){showBanner('Your usual day is already logged for '+dayLabel(date).toLowerCase()+'.');return;}
-  try{await addEntries(add);$('#banner').hidden=true;state.anchor=parse(date);render();}catch(e){showBanner('That did not save. Try again.');}
+  try{await withFreshSession(()=>addEntries(add));$('#banner').hidden=true;state.anchor=parse(date);render();}catch(e){showBanner(whyFailed(e));}
 };
 $('#export').onclick=async()=>{
   const r=range();const l=inRange(visible(),r).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.start||'')<(b.start||'')?-1:1);
